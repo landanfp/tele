@@ -31,7 +31,7 @@ async def delete_link(client: Client, message: Message) -> Message:
 
     if not file_document:
         return await message.reply(
-            text="Cannot find link: Either it has been deleted or it does not exist.",
+            text="**🖇 لینک نامعتبر است. ❌**",
             quote=True,
         )
 
@@ -44,7 +44,7 @@ async def delete_link(client: Client, message: Message) -> Message:
         message_ids = [i.message_id for i in file_data]
         await client.delete_messages(chat_id=file_origin, message_ids=message_ids)
 
-    return await message.reply(text=f">**Successfully Deleted:**\n `{base64_file_link}`", quote=True)
+    return await message.reply(text=f">**✅ لینک موردنظر با موفقیت از دیتابیس حذف شد.**\n `{base64_file_link}`", quote=True)
 
 
 HelpCmd.set_help(
