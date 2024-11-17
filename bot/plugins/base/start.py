@@ -125,7 +125,7 @@ async def file_start(
                 backup_channel=config.BACKUP_CHANNEL,
             )
         except (DataValidationError, IndexError):
-            await message.reply(text="Attempted to resolve link: Got invalid link.")
+            await message.reply(text="🖇 لینک نامعتبر است. ❌")
             return message.stop_propagation()
 
         send_files = await FileSender.codexbotz(
@@ -194,7 +194,7 @@ async def return_start(
 
     if message.command[1:]:
         link = f"https://t.me/{client.me.username}?start={message.command[1]}"  # type: ignore[reportOptionalMemberAccess]
-        buttons.append([InlineKeyboardButton(text="Try Again", url=link)])
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
 
     return await PyroHelper.option_message(
         client=client,
