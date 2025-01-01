@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "Teleshare"
+version = "0.1.0"
+description = "A efficient and fast telegram file sharing bot."
+authors = ["zawsq"]
+license = "GPL-3.0 license"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+tzdata = "^2024.1"
+
+pyrogram = { git = "https://github.com/KurimuzonAkuma/pyrogram.git", rev = "v2.1.22" }
+tgcrypto = "1.2.5"
+
+apscheduler = "3.10.4"
+rich = "13.7.1"
+lru-dict = "1.3.0"
+async-lru = "2.0.4"
+
+pydantic = "2.10.4"
+pydantic-settings = "2.3.4"
+motor = "3.6.0"
+
+[tool.poetry.group.dev.dependencies]
+pyright = "1.1.391"
+ruff = "0.8.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "Teleshare"
+requires-python = ">=3.10"
+version = "0.1.0"
+
+[tool.ruff]
+line-length = 120
+src = ["bot"]
+namespace-packages = [
+    "bot/plugins/**",
+    "bot/plugins/"
+    ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "CPY001", # copyright above code
+    "ANN101", # self annotations
+    "ANN102", # cls annotations
+    "D",      # sphinx not support 
+    ]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101", # assert in tests
+    ]
+
+[tool.pyright]
+include = ["bot","tests"]
+pythonVersion = "3.10"
+pythonPlatform = "all"
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
