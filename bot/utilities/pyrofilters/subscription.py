@@ -33,7 +33,7 @@ class SubscriptionFilter:
     _subs_cache: ClassVar[LRU] = LRU(10)
 
     @classmethod
-    def subscription(cls) -> filters.Filter:
+    def subscription(cls) -> filters.Filter:  # noqa: C901
         """
         Creates a filter to check if a user is subscribed to the required channels.
 
@@ -41,7 +41,7 @@ class SubscriptionFilter:
             filters.Filter: A filter to check if a user is subscribed to the required channels.
         """
 
-        async def func(flt: None, client: Client, message: SubscriptionMessage) -> bool:  # noqa: ARG001
+        async def func(flt: None, client: Client, message: SubscriptionMessage) -> bool:  # noqa: ARG001, PLR0911
             """
             Checks if a user is subscribed to the required channels.
 
@@ -79,14 +79,23 @@ class SubscriptionFilter:
                 cls._subs_cache.pop(user_id)
 
             try:
-                for channel in config.FORCE_SUB_CHANNELS:
-                    member = await client.get_chat_member(chat_id=channel, user_id=user_id)
-                    if member.status not in status:
+                joined_request_channel = await database.user_requested_channels(user_id)
+
+                for channel_info in config.channels_n_invite.values():
+                    channel_is_private = channel_info["is_private"]
+                    channel_id = channel_info["channel_id"]
+
+                    if channel_is_private and channel_id not in joined_request_channel:
                         return False
+
+                    if not channel_is_private:
+                        member = await client.get_chat_member(chat_id=channel_id, user_id=user_id)
+                        if member.status not in status:
+                            return False
             except UserNotParticipant:
                 return False
 
             cls._subs_cache[user_id] = datetime.datetime.now(tz=tzlocal.get_localzone())
-            return False
+            return True
 
         return filters.create(func, "SubscriptionFilter")
