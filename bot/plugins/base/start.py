@@ -82,7 +82,7 @@ class FileSender:
             ]
 
             for i_file_data in file_data_chunk:
-                send_files = await Pyrotools.send_media_group(
+                send_files = await Pyrotools.send_media_manager(
                     client=client,
                     chat_id=chat_id,
                     file_data=i_file_data,
@@ -125,7 +125,11 @@ async def file_start(
                 backup_channel=config.BACKUP_CHANNEL,
             )
         except (DataValidationError, IndexError):
-            await message.reply(text="Attempted to resolve link: Got invalid link.")
+            await PyroHelper.option_message(
+                client=client,
+                message=message,
+                option_key=options.settings.INVALID_LINK_MESSAGE,
+            )
             return message.stop_propagation()
 
         send_files = await FileSender.codexbotz(
@@ -136,7 +140,11 @@ async def file_start(
             protect_content=config.PROTECT_CONTENT,
         )
         if not send_files:
-            await message.reply(text="Attempted to fetch files: Does not exist.")
+            await PyroHelper.option_message(
+                client=client,
+                message=message,
+                option_key=options.settings.FILE_DOES_NOT_EXIST,
+            )
             return message.stop_propagation()
     else:
         file_origin = file_document["file_origin"]
@@ -228,4 +236,4 @@ HelpCmd.set_help(
     description=file_start.__doc__,
     allow_global=True,
     allow_non_admin=True,
-)
+        )
