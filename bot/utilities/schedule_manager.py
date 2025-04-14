@@ -37,11 +37,7 @@ class ScheduleManager:
             chat_id (int): The chat ID.
             message_ids (list[int]): The list of message IDs to delete.
         """
-        chunk_size = 100
-        chunked_ids = [message_ids[i : i + chunk_size] for i in range(0, len(message_ids), chunk_size)]
-
-        for i in chunked_ids:
-            await client.delete_messages(chat_id=chat_id, message_ids=i)
+        await client.delete_messages(chat_id=chat_id, message_ids=message_ids)
 
     async def schedule_delete(
         self,
