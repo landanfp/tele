@@ -181,7 +181,8 @@ async def file_start(
             message=message,
             option_key=auto_delete_message,
         )
-        schedule_delete_message.append(auto_delete_message_reply.id)
+        if auto_delete_message_reply:
+            schedule_delete_message.append(auto_delete_message_reply.id)
 
         if additional_message:
             schedule_delete_message.append(additional_message.id)
@@ -191,6 +192,7 @@ async def file_start(
             chat_id=message.chat.id,
             message_ids=schedule_delete_message,
             delete_n_seconds=delete_n_seconds,
+            base64_file_link=base64_file_link,
         )
 
     return message.stop_propagation()
@@ -221,7 +223,7 @@ async def return_start(
 
     if message.command[1:]:
         link = f"https://t.me/{client.me.username}?start={message.command[1]}"  # type: ignore[reportOptionalMemberAccess]
-        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
+        buttons.append([InlineKeyboardButton(text="Try Again", url=link)])
 
     return await PyroHelper.option_message(
         client=client,
@@ -236,4 +238,4 @@ HelpCmd.set_help(
     description=file_start.__doc__,
     allow_global=True,
     allow_non_admin=True,
-        )
+)
