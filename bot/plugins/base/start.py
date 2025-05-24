@@ -223,7 +223,7 @@ async def return_start(
 
     if message.command[1:]:
         link = f"https://t.me/{client.me.username}?start={message.command[1]}"  # type: ignore[reportOptionalMemberAccess]
-        buttons.append([InlineKeyboardButton(text="Try Again", url=link)])
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل 🔁", url=link)])
 
     return await PyroHelper.option_message(
         client=client,
