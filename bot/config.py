@@ -22,6 +22,7 @@ from pydantic_settings import (
 from pydantic_settings.sources import SettingsError
 from typing_extensions import TypedDict
 
+logger = logging.getLogger(__name__)
 MongoSRVDsn = Annotated[MultiHostUrl, UrlConstraints(allowed_schemes=["mongodb+srv"])]
 BASE_PATH = Path(__file__).parent.parent
 
@@ -76,6 +77,7 @@ class Config(BaseSettings):
     @field_validator("channels_n_invite", mode="before")
     @classmethod
     def ignore_keys(cls, value: dict[str, ChannelInfo]) -> dict[str, ChannelInfo]:
+        """Ignored configuration keys for runtime injection"""
         return {}
 
     @classmethod
@@ -96,5 +98,5 @@ class Config(BaseSettings):
 try:
     config = Config()  # type: ignore[reportCallIssue]
 except (ValidationError, SettingsError):
-    logging.exception("Configuration Error")
+    logger.exception("Configuration Error")
     sys.exit(1)
