@@ -1,4 +1,3 @@
-# farshidband
 import asyncio
 import logging
 import sys
@@ -25,13 +24,15 @@ logging.basicConfig(
     handlers=[RichHandler()],
 )
 
+logger = logging.getLogger(__name__)
+
 try:
     import uvloop  # type: ignore[reportMissingImports]
 
     uvloop.install()
-    logging.info("Using UVLoop for enhanced performance")
+    logger.info("Using UVLoop for enhanced performance")
 except ImportError:
-    logging.warning("UVLoop not installed. Falling back to asyncio")
+    logger.warning("UVLoop not installed. Falling back to asyncio")
 
 background_tasks = set()
 
