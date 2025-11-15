@@ -64,6 +64,7 @@ async def unban_user(client: Client, message: ConvoMessage) -> Message | None:
     keyboard = InlineKeyboardMarkup(
         [
             [
+                # دیتا را به فرمت CONFIRM_UNBAN|ID می‌فرستیم
                 InlineKeyboardButton("✅ بله", callback_data=f"CONFIRM_UNBAN|{user_id}"),
                 InlineKeyboardButton("✖️ لغو", callback_data=f"CANCEL_UNBAN|{user_id}"),
             ],
@@ -81,19 +82,21 @@ async def unban_user(client: Client, message: ConvoMessage) -> Message | None:
 async def unban_callback_handler(client: Client, callback_query: CallbackQuery):
     """هندلر کلیک‌های تأیید و لغو برای دستور /unban"""
 
-    # 1. جداسازی اکشن و آیدی کاربر هدف
+    # --- کد بررسی ادمین حذف شد ---
+
+    # 2. جداسازی اکشن و آیدی کاربر هدف
     action, user_id_str = callback_query.data.split("|")
     user_id = int(user_id_str)
-    message = callback_query.message
+    message = callback_query.message  # پیام اصلی که دکمه‌ها زیر آن هستند
 
     if action == "CANCEL_UNBAN":
-        # 2. عملیات لغو
+        # 3. عملیات لغو
         await message.delete()
         await callback_query.answer("✖️ لغو شود", show_alert=False)
         return
 
     elif action == "CONFIRM_UNBAN":
-        # 3. عملیات تایید (آنبن کردن)
+        # 4. عملیات تایید (آنبن کردن)
         unban_result = await database.unban_user(user_id)
 
         # دریافت نام کاربر برای پیام نهایی
@@ -131,6 +134,6 @@ async def unban_callback_handler(client: Client, callback_query: CallbackQuery):
 HelpCmd.set_help(
     command="unban",
     description=unban_user.__doc__,
-    # allow_global=False,  <-- این خطوط حذف شدند
-    # allow_non_admin=False, <-- این خطوط حذف شدند
+    allow_global=False,
+    allow_non_admin=False,
 )
