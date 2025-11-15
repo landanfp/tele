@@ -59,3 +59,22 @@ class Moderation:
         user = await collection.find_one({"_id": user_id}, {"_id": 0, "banned": 1})
 
         return user.get("banned", False) if user else False
+
+async def get_banned_users(self) -> list[dict]:
+        """
+        Retrieves all banned users from the database.
+
+        Returns:
+            list[dict]: List of banned user documents with 'id' key.
+        """
+        collection = self.db["Users"]
+        try:
+            cursor = collection.find({"banned": True}, {"_id": 1})
+            docs = await cursor.to_list(length=None)
+            # Map _id to id برای سازگاری با handler
+            result = [{"id": doc["_id"]} for doc in docs]
+            logger.info(f"Queried {len(result)} banned users from DB")
+            return result
+        except Exception as e:
+            logger.error(f"DB query error in get_banned_users: {e}")
+            return []
