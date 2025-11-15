@@ -1,3 +1,4 @@
+# bot/utilities/pyrofilters/subscription.py file :
 import datetime
 from typing import ClassVar
 
@@ -60,12 +61,22 @@ class SubscriptionFilter:
                 ChatMemberStatus.MEMBER,
             ]
 
-            if user_id in config.ROOT_ADMINS_ID or not config.FORCE_SUB_CHANNELS:
+            # --- شروع تغییرات ---
+
+            # 1. ادمین‌های اصلی همیشه مجاز هستند
+            if user_id in config.ROOT_ADMINS_ID:
                 return True
 
+            # 2. کاربران بن‌شده همیشه رد می‌شوند (این بررسی به اینجا منتقل شد)
             if await database.is_user_banned(user_id):
                 message.user_is_banned = True
                 return False
+
+            # 3. اگر اجبار عضویت خاموش باشد، بقیه کاربران مجاز هستند (چون بن‌شده‌ها قبلاً رد شدند)
+            if not config.FORCE_SUB_CHANNELS:
+                return True
+
+            # --- پایان تغییرات ---
 
             if user_id in cls._subs_cache:
                 user_cache_time = cls._subs_cache.get(user_id)
