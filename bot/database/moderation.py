@@ -1,6 +1,8 @@
-# bot/database/moderation.py file :
+import logging
 from async_lru import alru_cache
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+logger = logging.getLogger(__name__)
 
 
 class Moderation:
@@ -9,22 +11,21 @@ class Moderation:
     async def ban_user(self, user_id: int) -> bool:
         """
         Bans a user in the database.
-        If user does not exist, creates and bans them.
 
         Parameters:
             user_id (int): The ID of the user to ban.
 
         Returns:
-            bool: Whether the operation was successful.
+            bool: Whether the user was successfully banned.
         """
         collection = self.db["Users"]
         result = await collection.update_one(
             filter={"_id": user_id},
             update={"$set": {"_id": user_id, "banned": True}},
-            upsert=True,  # <-- **تغییر اصلی**
+            upsert=False,
         )
 
-        return result.acknowledged  # <-- **تغییر برای گزارش صحیح**
+        return bool(result.matched_count)
 
     async def unban_user(self, user_id: int) -> bool:
         """
@@ -40,7 +41,7 @@ class Moderation:
         result = await collection.update_one(
             filter={"_id": user_id},
             update={"$set": {"_id": user_id, "banned": False}},
-            upsert=False,  # <-- این باید False بماند، چون کاربری که وجود ندارد را نباید آنبن کنیم
+            upsert=False,
         )
         return bool(result.matched_count)
 
@@ -60,7 +61,7 @@ class Moderation:
 
         return user.get("banned", False) if user else False
 
-async def get_banned_users(self) -> list[dict]:
+    async def get_banned_users(self) -> list[dict]:
         """
         Retrieves all banned users from the database.
 
