@@ -10,7 +10,7 @@ class AdminsFilter:
     """A filter to check if a user is an admin."""
 
     @classmethod
-    def admin(cls) -> filters.Filter:
+    def admin(cls, **kwargs) -> filters.Filter: # <-- تغییر مهم: اضافه شدن **kwargs
         """
         Creates a filter to check if a user is an admin.
 
@@ -27,7 +27,7 @@ class AdminsFilter:
             if user_id in config.ROOT_ADMINS_ID:
                 return True
             
-            # در اینجا False برگردانده می‌شود تا اجرای دستور متوقف شده و پیام خطا در ban.py و unban.py ارسال شود.
+            # در اینجا False برگردانده می‌شود تا اجرای دستور متوقف شود
             return False 
 
         return filters.create(func, "AdminFilter")
