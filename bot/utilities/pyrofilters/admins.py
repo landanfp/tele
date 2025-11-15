@@ -6,13 +6,16 @@ from pyrogram.types import Message
 from bot.config import config
 
 
-class AdminsFilter: # <-- نام کلاس جدید
+class AdminsFilter:
     """A filter to check if a user is an admin."""
 
     @classmethod
-    def admin(cls) -> filters.Filter: # <-- تابع admin بدون آرگومان‌های اضافی
+    def admin(cls) -> filters.Filter:
         """
         Creates a filter to check if a user is an admin.
+
+        Returns:
+            filters.Filter: A filter to check if a user is an admin.
         """
 
         async def func(flt: None, client: Client, message: Message) -> bool:  # noqa: ARG001
@@ -24,7 +27,7 @@ class AdminsFilter: # <-- نام کلاس جدید
             if user_id in config.ROOT_ADMINS_ID:
                 return True
             
-            # در این مرحله فقط False برمی‌گرداند تا پیام "شما ادمین نیستید!" در ban.py و unban.py ارسال شود
+            # در اینجا False برگردانده می‌شود تا اجرای دستور متوقف شده و پیام خطا در ban.py و unban.py ارسال شود.
             return False 
 
         return filters.create(func, "AdminFilter")
