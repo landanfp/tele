@@ -1,3 +1,4 @@
+# bot/database/moderation.py file :
 from async_lru import alru_cache
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -8,21 +9,22 @@ class Moderation:
     async def ban_user(self, user_id: int) -> bool:
         """
         Bans a user in the database.
+        If user does not exist, creates and bans them.
 
         Parameters:
             user_id (int): The ID of the user to ban.
 
         Returns:
-            bool: Whether the user was successfully banned.
+            bool: Whether the operation was successful.
         """
         collection = self.db["Users"]
         result = await collection.update_one(
             filter={"_id": user_id},
             update={"$set": {"_id": user_id, "banned": True}},
-            upsert=False,
+            upsert=True,  # <-- **تغییر اصلی**
         )
 
-        return bool(result.matched_count)
+        return result.acknowledged  # <-- **تغییر برای گزارش صحیح**
 
     async def unban_user(self, user_id: int) -> bool:
         """
@@ -38,7 +40,7 @@ class Moderation:
         result = await collection.update_one(
             filter={"_id": user_id},
             update={"$set": {"_id": user_id, "banned": False}},
-            upsert=False,
+            upsert=False,  # <-- این باید False بماند، چون کاربری که وجود ندارد را نباید آنبن کنیم
         )
         return bool(result.matched_count)
 
