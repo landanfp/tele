@@ -6,7 +6,7 @@ from pyrogram.types import Message
 from bot.config import config
 
 
-class AdminFilter:
+class AdminsFilter:
     """A filter to check if a user is an admin."""
 
     @classmethod
