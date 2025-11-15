@@ -129,6 +129,6 @@ async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
 HelpCmd.set_help(
     command="ban",
     description=ban_user.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
+#    allow_global=False,
+#    allow_non_admin=False,
 )
