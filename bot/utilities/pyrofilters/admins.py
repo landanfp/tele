@@ -1,33 +1,21 @@
-# bot/utilities/pyrofilters/admins.py file :
+# ruff: noqa: ARG001
+
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.types import Message
 
 from bot.config import config
+from bot.options import options
 
 
 class AdminsFilter:
-    """A filter to check if a user is an admin."""
-
-    @classmethod
-    def admin(cls, **kwargs) -> filters.Filter: # <-- تغییر مهم: اضافه شدن **kwargs
-        """
-        Creates a filter to check if a user is an admin.
-
-        Returns:
-            filters.Filter: A filter to check if a user is an admin.
-        """
-
-        async def func(flt: None, client: Client, message: Message) -> bool:  # noqa: ARG001
-            """
-            Checks if a user is an admin.
-            """
+    @staticmethod
+    def admin(
+        allow_global: bool = False,  # noqa: FBT001, FBT002
+    ) -> filters.Filter:
+        async def func(flt: None, client: Client, message: Message) -> bool:
             user_id = message.from_user.id
-
-            if user_id in config.ROOT_ADMINS_ID:
-                return True
-            
-            # در اینجا False برگردانده می‌شود تا اجرای دستور متوقف شود
-            return False 
+            global_mode = options.settings.GLOBAL_MODE
+            return user_id in config.ROOT_ADMINS_ID or (global_mode and allow_global)
 
         return filters.create(func, "AdminFilter")
