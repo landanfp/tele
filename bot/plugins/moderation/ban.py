@@ -64,6 +64,7 @@ async def ban_user(client: Client, message: ConvoMessage) -> Message | None:
     keyboard = InlineKeyboardMarkup(
         [
             [
+                # دیتا را به فرمت CONFIRM_BAN|ID می‌فرستیم
                 InlineKeyboardButton("✅ بله", callback_data=f"CONFIRM_BAN|{user_id}"),
                 InlineKeyboardButton("✖️ لغو", callback_data=f"CANCEL_BAN|{user_id}"),
             ],
@@ -81,19 +82,21 @@ async def ban_user(client: Client, message: ConvoMessage) -> Message | None:
 async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
     """هندلر کلیک‌های تأیید و لغو برای دستور /ban"""
 
-    # 1. جداسازی اکشن و آیدی کاربر هدف
+    # --- کد بررسی ادمین حذف شد ---
+
+    # 2. جداسازی اکشن و آیدی کاربر هدف
     action, user_id_str = callback_query.data.split("|")
     user_id = int(user_id_str)
-    message = callback_query.message
+    message = callback_query.message  # پیام اصلی که دکمه‌ها زیر آن هستند
 
     if action == "CANCEL_BAN":
-        # 2. عملیات لغو
-        await message.delete()
-        await callback_query.answer("✖️ لغو شود", show_alert=False)
+        # 3. عملیات لغو
+        await message.delete()  # پیام را پاک می‌کند
+        await callback_query.answer("✖️ لغو شود", show_alert=False)  # پیام answer را نمایش می‌دهد
         return
 
     elif action == "CONFIRM_BAN":
-        # 3. عملیات تایید (بن کردن)
+        # 4. عملیات تایید (بن کردن)
         await database.ban_user(user_id)
         
         # ارسال پیام به کاربر بن‌شده
@@ -103,6 +106,7 @@ async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
                 text="⛔ دسترسی شما به ربات مسدود شد.",
             )
         except Exception:
+            # نادیده گرفتن خطا اگر کاربر ربات را بلاک کرده باشد
             pass
 
         # دریافت نام کاربر برای پیام نهایی
@@ -115,7 +119,7 @@ async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
         # ویرایش پیام اصلی برای نمایش نتیجه نهایی
         await message.edit_text(
             f"✅ کاربر **{user_name}** با آیدی `{user_id}` با موفقیت بن شد.",
-            reply_markup=None,
+            reply_markup=None,  # دکمه‌ها حذف می‌شوند
         )
 
         await callback_query.answer("✅ باموفقیت انجام شد.", show_alert=False)
@@ -125,6 +129,6 @@ async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
 HelpCmd.set_help(
     command="ban",
     description=ban_user.__doc__,
-    # allow_global=False,  <-- این خطوط حذف شدند
-    # allow_non_admin=False, <-- این خطوط حذف شدند
+    allow_global=False,
+    allow_non_admin=False,
 )
