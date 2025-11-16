@@ -120,6 +120,16 @@ async def file_start(
 
     user_id = message.from_user.id
 
+    # چک محدودیت کلیک روزانه قبل از ارسال
+    daily_clicks = await database.get_daily_clicks(user_id)
+    daily_limit = await database.get_daily_limit(user_id)
+    if daily_clicks >= daily_limit:
+        await message.reply(
+            f"⚠️ محدودیت روزانه شما ({daily_limit} کلیک) تمام شده. فردا دوباره امتحان کنید.\n\nوضعیت پلن: /myplan",
+            quote=True
+        )
+        return message.stop_propagation()
+
     if not file_document:
         try:
             codex_message_ids = DataEncoder.codex_decode(
@@ -160,7 +170,7 @@ async def file_start(
             protect_content=config.PROTECT_CONTENT,
         )
 
-    # افزایش تعداد کلیک/دانلود
+    # افزایش تعداد کلیک/دانلود فقط بعد از ارسال موفق
     await database.increase_daily_clicks(user_id)
 
     delete_n_seconds = options.settings.AUTO_DELETE_SECONDS
