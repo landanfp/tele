@@ -66,7 +66,7 @@ class Moderation:
 
     async def get_user_plan(self, user_id: int):
         """دریافت نام پلن فعلی کاربر."""
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         return user.get("plan", "free") if user else "free"
 
     async def set_user_plan(self, user_id: int, plan: str, expiry_date: str = None):
@@ -78,25 +78,25 @@ class Moderation:
             'plan_expiry': expiry_date,
             'daily_limit': DAILY_LINK_LIMITS.get(plan, DAILY_LINK_LIMITS.get("free"))
         }
-        await self.db["Users"].update_one({'id': user_id}, {'$set': update_data})
+        await self.db["Users"].update_one({'_id': user_id}, {'$set': update_data})
 
     async def increase_daily_clicks(self, user_id: int):
         """افزایش تعداد کلیک/دانلود روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
         await self.db["Users"].update_one(
-            {'id': user_id},
+            {'_id': user_id},
             {'$inc': {'daily_clicks': 1}}
         )
 
     async def get_daily_clicks(self, user_id: int):
         """دریافت تعداد کلیک/دانلود روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         return user.get("daily_clicks", 0) if user else 0
 
     async def get_plan_expiry(self, user_id: int):
         """دریافت تاریخ انقضای پلن کاربر."""
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         if user and user.get("plan") != "free":
             return user.get("plan_expiry")
         return None
@@ -104,7 +104,7 @@ class Moderation:
     async def get_daily_limit(self, user_id: int):
         """دریافت محدودیت کلیک روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         if user:
             plan = user.get('plan', 'free')
             return DAILY_LINK_LIMITS.get(plan, DAILY_LINK_LIMITS.get("free", 2))
@@ -123,18 +123,18 @@ class Moderation:
             "daily_limit": limit_to_set,
             "plan_expiry": expiry_date_iso
         }
-        result = await self.db["Users"].update_one({"id": user_id}, {"$set": update_fields})
+        result = await self.db["Users"].update_one({"_id": user_id}, {"$set": update_fields})
         return "success" if result.modified_count > 0 else "failed"
 
     async def update_one(self, user_id: int, update_dict: dict):
         """به‌روزرسانی یک یا چند فیلد خاص برای کاربر."""
         if not await self.is_user_exist(user_id):
             pass
-        await self.db["Users"].update_one({"id": user_id}, {"$set": update_dict})
+        await self.db["Users"].update_one({"_id": user_id}, {"$set": update_dict})
 
     async def check_and_reset_daily_usage(self, user_id: int):
         """بررسی و ریست کردن آمار روزانه کاربر."""
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         today_str = str(datetime.date.today())
         await self.check_and_update_expired_plan(user_id)
         if not user:
@@ -143,7 +143,7 @@ class Moderation:
         last_reset = user.get('last_reset_date')
         if last_reset != today_str:
             await self.db["Users"].update_one(
-                {'id': user_id},
+                {'_id': user_id},
                 {'$set': {
                     'daily_clicks': 0,
                     'last_reset_date': today_str
@@ -153,7 +153,7 @@ class Moderation:
 
     async def check_and_update_expired_plan(self, user_id: int, client=None):
         """بررسی تاریخ انقضای پلن و تغییر به رایگان در صورت منقضی شدن."""
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         if not user or user.get('plan', 'free') == 'free':
             return False
         expiry_date = user.get('plan_expiry')
@@ -162,7 +162,7 @@ class Moderation:
             expiry = datetime.datetime.strptime(expiry_date, "%Y-%m-%d").date()
             if today > expiry:
                 await self.db["Users"].update_one(
-                    {'id': user_id},
+                    {'_id': user_id},
                     {'$set': {
                         'plan': 'free',
                         'plan_expiry': None,
@@ -198,13 +198,13 @@ class Moderation:
         """بررسی و به‌روزرسانی پلن‌های منقضی‌شده همه کاربران."""
         today_str = str(datetime.date.today())
         async for user in self.db["Users"].find({'plan': {'$ne': 'free'}, 'plan_expiry': {'$ne': None}}):
-            user_id = user['id']
+            user_id = user['_id']
             expiry_date = user.get('plan_expiry')
             if expiry_date:
                 expiry = datetime.datetime.strptime(expiry_date, "%Y-%m-%d").date()
                 if datetime.date.today() > expiry:
                     await self.db["Users"].update_one(
-                        {'id': user_id},
+                        {'_id': user_id},
                         {'$set': {
                             'plan': 'free',
                             'plan_expiry': None,
@@ -224,14 +224,14 @@ class Moderation:
         logger.info(f"[{datetime.datetime.now()}] Checked all users for expired plans on {today_str}")
 
     async def is_user_exist(self, user_id: int) -> bool:
-        user = await self.db["Users"].find_one({'id': user_id})
+        user = await self.db["Users"].find_one({'_id': user_id})
         return bool(user)
 
     async def add_user(self, user_id: int) -> bool:
         collection = self.db["Users"]
         result = await collection.update_one(
-            filter={"id": user_id},
-            update={"$set": {"id": user_id}},
+            filter={"_id": user_id},
+            update={"$set": {"_id": user_id}},
             upsert=True,
         )
         return result.acknowledged
