@@ -38,6 +38,7 @@ DAILY_LINK_LIMITS = {
     "monthly_10": 10,
     "monthly_15": 15,
     "monthly_20": 20,
+    "vip_15days": 10,  # 10 clicks per day, 15 days expiry (VIP special)
 }
 
 class ChannelInfo(TypedDict):
