@@ -64,6 +64,10 @@ class Moderation:
 
         return user.get("banned", False) if user else False
 
+    async def get_all_users(self):
+    """دریافت همه کاربران."""
+    return self.db["Users"].find({})
+
     async def get_user_plan(self, user_id: int):
         """دریافت نام پلن فعلی کاربر."""
         user = await self.db["Users"].find_one({'_id': user_id})
