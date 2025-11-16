@@ -4,7 +4,7 @@ from async_lru import alru_cache
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import datetime
 import logging
-from bot.config import DAILY_LIMITS
+from bot.config import DAILY_LINK_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -76,37 +76,23 @@ class Moderation:
         update_data = {
             'plan': plan,
             'plan_expiry': expiry_date,
-            'daily_limit': DAILY_LIMITS.get(plan, DAILY_LIMITS.get("free"))
+            'daily_limit': DAILY_LINK_LIMITS.get(plan, DAILY_LINK_LIMITS.get("free"))
         }
         await self.db["Users"].update_one({'id': user_id}, {'$set': update_data})
 
-    async def update_daily_usage(self, user_id: int, usage: int):
-        """افزایش میزان استفاده روزانه کاربر."""
+    async def increase_daily_clicks(self, user_id: int):
+        """افزایش تعداد کلیک/دانلود روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
         await self.db["Users"].update_one(
             {'id': user_id},
-            {'$inc': {'daily_usage': usage}}
+            {'$inc': {'daily_clicks': 1}}
         )
 
-    async def get_daily_usage(self, user_id: int):
-        """دریافت میزان استفاده روزانه کاربر."""
+    async def get_daily_clicks(self, user_id: int):
+        """دریافت تعداد کلیک/دانلود روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
         user = await self.db["Users"].find_one({'id': user_id})
-        return user.get("daily_usage", 0) if user else 0
-
-    async def increase_daily_link_count(self, user_id: int):
-        """افزایش تعداد لینک‌های ساخته شده توسط کاربر."""
-        await self.check_and_reset_daily_usage(user_id)
-        await self.db["Users"].update_one(
-            {'id': user_id},
-            {'$inc': {'daily_link_count': 1}}
-        )
-
-    async def get_daily_link_count(self, user_id: int):
-        """دریافت تعداد لینک‌های ساخته شده توسط کاربر."""
-        await self.check_and_reset_daily_usage(user_id)
-        user = await self.db["Users"].find_one({'id': user_id})
-        return user.get("daily_link_count", 0) if user else 0
+        return user.get("daily_clicks", 0) if user else 0
 
     async def get_plan_expiry(self, user_id: int):
         """دریافت تاریخ انقضای پلن کاربر."""
@@ -116,19 +102,19 @@ class Moderation:
         return None
 
     async def get_daily_limit(self, user_id: int):
-        """دریافت محدودیت آپلود روزانه کاربر."""
+        """دریافت محدودیت کلیک روزانه کاربر."""
         await self.check_and_reset_daily_usage(user_id)
         user = await self.db["Users"].find_one({'id': user_id})
         if user:
             plan = user.get('plan', 'free')
-            return DAILY_LIMITS.get(plan, DAILY_LIMITS.get("free", 2 * 1024 * 1024 * 1024))
-        return DAILY_LIMITS.get("free", 2 * 1024 * 1024 * 1024)
+            return DAILY_LINK_LIMITS.get(plan, DAILY_LINK_LIMITS.get("free", 2))
+        return DAILY_LINK_LIMITS.get("free", 2)
 
     async def update_user_plan2(self, user_id: int, plan: str = "free", daily_limit: int = -1, days: int = 0):
         """به‌روزرسانی پلن کاربر با جزئیات بیشتر."""
         if not await self.is_user_exist(user_id):
             await self.add_user(user_id)
-        limit_to_set = daily_limit if daily_limit != -1 else DAILY_LIMITS.get(plan, DAILY_LIMITS.get("free"))
+        limit_to_set = daily_limit if daily_limit != -1 else DAILY_LINK_LIMITS.get(plan, DAILY_LINK_LIMITS.get("free"))
         expiry_date_iso = None
         if days > 0:
             expiry_date_iso = (datetime.date.today() + datetime.timedelta(days=days)).isoformat()
@@ -159,12 +145,11 @@ class Moderation:
             await self.db["Users"].update_one(
                 {'id': user_id},
                 {'$set': {
-                    'daily_usage': 0,
-                    'daily_link_count': 0,
+                    'daily_clicks': 0,
                     'last_reset_date': today_str
                 }}
             )
-            logger.info(f"Daily stats reset for user {user_id} on {today_str}")
+            logger.info(f"Daily clicks reset for user {user_id} on {today_str}")
 
     async def check_and_update_expired_plan(self, user_id: int, client=None):
         """بررسی تاریخ انقضای پلن و تغییر به رایگان در صورت منقضی شدن."""
@@ -181,7 +166,7 @@ class Moderation:
                     {'$set': {
                         'plan': 'free',
                         'plan_expiry': None,
-                        'daily_limit': DAILY_LIMITS.get('free', 2 * 1024 * 1024 * 1024)
+                        'daily_limit': DAILY_LINK_LIMITS.get('free', 2)
                     }}
                 )
                 logger.info(f"Plan for user {user_id} expired. Changed to free plan.")
@@ -203,12 +188,11 @@ class Moderation:
         result = await self.db["Users"].update_many(
             {},
             {'$set': {
-                'daily_usage': 0,
-                'daily_link_count': 0,
+                'daily_clicks': 0,
                 'last_reset_date': today_str
             }}
         )
-        logger.info(f"[{datetime.datetime.now()}] Global daily usage and link count reset executed for date: {today_str}. Users modified: {result.modified_count}")
+        logger.info(f"[{datetime.datetime.now()}] Global daily clicks reset executed for date: {today_str}. Users modified: {result.modified_count}")
 
     async def check_all_expired_plans(self, client=None):
         """بررسی و به‌روزرسانی پلن‌های منقضی‌شده همه کاربران."""
@@ -224,7 +208,7 @@ class Moderation:
                         {'$set': {
                             'plan': 'free',
                             'plan_expiry': None,
-                            'daily_limit': DAILY_LIMITS.get('free', 2 * 1024 * 1024 * 1024)
+                            'daily_limit': DAILY_LINK_LIMITS.get('free', 2)
                         }}
                     )
                     logger.info(f"Plan for user {user_id} expired. Changed to free plan.")
