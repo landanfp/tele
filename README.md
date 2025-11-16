@@ -1,4 +1,5 @@
 New Version <br>
+<b>🧩 Feature CUSTOM_CAPTION added.</b><br>
 <b>🧩 /create_vip added.</b><br>
 <b>🧩 /vip added.</b><br>
 <b>🧩 /ban_list added.</b><br>
