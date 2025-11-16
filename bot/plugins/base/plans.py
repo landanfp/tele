@@ -102,7 +102,7 @@ async def addpremium(client: Client, message: Message):
         reply_markup=keyboard
     )
 
-@Client.on_callback_query(filters.regex('^daily5_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^daily5_(\d+)$'))
 async def daily5(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=1)
@@ -114,7 +114,7 @@ async def daily5(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^daily10_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^daily10_(\d+)$'))
 async def daily10(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=1)
@@ -126,7 +126,7 @@ async def daily10(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^daily20_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^daily20_(\d+)$'))
 async def daily20(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=1)
@@ -138,7 +138,7 @@ async def daily20(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^weekly5_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^weekly5_(\d+)$'))
 async def weekly5(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=7)
@@ -150,7 +150,7 @@ async def weekly5(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^weekly10_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^weekly10_(\d+)$'))
 async def weekly10(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=7)
@@ -162,7 +162,7 @@ async def weekly10(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^weekly15_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^weekly15_(\d+)$'))
 async def weekly15(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=7)
@@ -174,7 +174,7 @@ async def weekly15(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^weekly20_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^weekly20_(\d+)$'))
 async def weekly20(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=7)
@@ -186,7 +186,7 @@ async def weekly20(client: Client, callback_query: CallbackQuery):
     except Exception as e:
         await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
 
-@Client.on_callback_query(filters.regex('^monthly5_(\d+)$'))
+@Client.on_callback_query(filters.regex(r'^monthly5_(\d+)$'))
 async def monthly5(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     expiry_date = datetime.date.today() + datetime.timedelta(days=30)
@@ -194,4 +194,104 @@ async def monthly5(client: Client, callback_query: CallbackQuery):
     await callback_query.message.edit(f"**✅ تغییر پلن کاربر {user_id} باموفقیت انجام شد.\n\n🔮 نوع پلن : ماهانه 5 کلیک\n📀 محدودیت روزانه این پلن: {DAILY_LINK_LIMITS['monthly_5']} کلیک**")
     try:
         await client.send_message(user_id, "**✅ حساب شما به پلن ماهانه 5 کلیک ارتقا پیدا کرد.\n⭕️ هم اکنون بررسی کنید 👈 /myplan **")
-        await client.send_message(LOG_CHANNEL, f"
+        await client.send_message(LOG_CHANNEL, f"⚡️ Plan Upgraded successfully 💥\n\nUser ID: `{user_id}` Upgraded To monthly_5. check their plan here /myplan")
+    except Exception as e:
+        await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
+
+@Client.on_callback_query(filters.regex(r'^monthly10_(\d+)$'))
+async def monthly10(client: Client, callback_query: CallbackQuery):
+    user_id = int(callback_query.matches[0].group(1))
+    expiry_date = datetime.date.today() + datetime.timedelta(days=30)
+    await db.set_user_plan(user_id, "monthly_10", expiry_date.isoformat())
+    await callback_query.message.edit(f"**✅ تغییر پلن کاربر {user_id} باموفقیت انجام شد.\n\n🔮 نوع پلن : ماهانه 10 کلیک\n📀 محدودیت روزانه این پلن: {DAILY_LINK_LIMITS['monthly_10']} کلیک**")
+    try:
+        await client.send_message(user_id, "**✅ حساب شما به پلن ماهانه 10 کلیک ارتقا پیدا کرد.\n⭕️ هم اکنون بررسی کنید 👈 /myplan **")
+        await client.send_message(LOG_CHANNEL, f"⚡️ Plan Upgraded successfully 💥\n\nUser ID: `{user_id}` Upgraded To monthly_10. check their plan here /myplan")
+    except Exception as e:
+        await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
+
+@Client.on_callback_query(filters.regex(r'^monthly15_(\d+)$'))
+async def monthly15(client: Client, callback_query: CallbackQuery):
+    user_id = int(callback_query.matches[0].group(1))
+    expiry_date = datetime.date.today() + datetime.timedelta(days=30)
+    await db.set_user_plan(user_id, "monthly_15", expiry_date.isoformat())
+    await callback_query.message.edit(f"**✅ تغییر پلن کاربر {user_id} باموفقیت انجام شد.\n\n🔮 نوع پلن : ماهانه 15 کلیک\n📀 محدودیت روزانه این پلن: {DAILY_LINK_LIMITS['monthly_15']} کلیک**")
+    try:
+        await client.send_message(user_id, "**✅ حساب شما به پلن ماهانه 15 کلیک ارتقا پیدا کرد.\n⭕️ هم اکنون بررسی کنید 👈 /myplan **")
+        await client.send_message(LOG_CHANNEL, f"⚡️ Plan Upgraded successfully 💥\n\nUser ID: `{user_id}` Upgraded To monthly_15. check their plan here /myplan")
+    except Exception as e:
+        await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
+
+@Client.on_callback_query(filters.regex(r'^monthly20_(\d+)$'))
+async def monthly20(client: Client, callback_query: CallbackQuery):
+    user_id = int(callback_query.matches[0].group(1))
+    expiry_date = datetime.date.today() + datetime.timedelta(days=30)
+    await db.set_user_plan(user_id, "monthly_20", expiry_date.isoformat())
+    await callback_query.message.edit(f"**✅ تغییر پلن کاربر {user_id} باموفقیت انجام شد.\n\n🔮 نوع پلن : ماهانه 20 کلیک\n📀 محدودیت روزانه این پلن: {DAILY_LINK_LIMITS['monthly_20']} کلیک**")
+    try:
+        await client.send_message(user_id, "**✅ حساب شما به پلن ماهانه 20 کلیک ارتقا پیدا کرد.\n⭕️ هم اکنون بررسی کنید 👈 /myplan **")
+        await client.send_message(LOG_CHANNEL, f"⚡️ Plan Upgraded successfully 💥\n\nUser ID: `{user_id}` Upgraded To monthly_20. check their plan here /myplan")
+    except Exception as e:
+        await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
+
+@Client.on_message(filters.private & PyroFilters.admin() & filters.command(["delete_premium"]))
+@RateLimiter.hybrid_limiter(func_count=1)
+async def delete_premium_handler(client: Client, message: Message):
+    if len(message.command) != 2:
+        await message.reply("⚠️ برای حذف پلن ویژه، آیدی عددی کاربر را بعد از دستور وارد کنید.\n\nمثال: `/delete_premium 123456789`", quote=True)
+        return
+    try:
+        user_id = int(message.command[1])
+    except ValueError:
+        await message.reply("⚠️ آیدی کاربر باید یک عدد باشد.", quote=True)
+        return
+
+    await message.reply(
+        f"آیا مطمئن هستید که می‌خواهید پلن ویژه کاربر با آیدی `{user_id}` را حذف کنید؟!",
+        quote=True,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("✅ بله", callback_data=f"delpremium_yes_{user_id}"),
+                    InlineKeyboardButton("❌ خیر", callback_data=f"delpremium_no_{user_id}"),
+                ]
+            ]
+        )
+    )
+
+@Client.on_callback_query(filters.regex(r'^delpremium_yes_(\d+)$'))
+async def delete_premium_yes(client: Client, callback_query: CallbackQuery):
+    user_id = int(callback_query.matches[0].group(1))
+    await db.set_user_plan(user_id, "free", None)
+    await callback_query.edit_message_text(f"✅ باموفقیت پلن کاربر با آیدی `{user_id}` به پلن رایگان بازگردانده شد.")
+    try:
+        await client.send_message(user_id, "⚠️ پلن ویژه شما منقضی شد و به پلن رایگان بازگشتید. برای اطلاع از وضعیت پلن خود از دستور `/myplan` استفاده کنید.")
+        await client.send_message(LOG_CHANNEL, f"⚠️ Plan Removed successfully 🗑️\n\nUser ID: `{user_id}`'s premium plan has been removed.")
+    except Exception as e:
+        await callback_query.message.reply(f"⚠️ هنگام ارسال پیام به کاربر {user_id} خطایی رخ داد: {e}")
+
+@Client.on_callback_query(filters.regex(r'^delpremium_no_(\d+)$'))
+async def delete_premium_no(client: Client, callback_query: CallbackQuery):
+    user_id = int(callback_query.matches[0].group(1))
+    await callback_query.edit_message_text(f"❌ عملیات حذف پلن ویژه برای کاربر با آیدی `{user_id}` لغو شد.")
+
+HelpCmd.set_help(
+    command="myplan",
+    description="نمایش وضعیت پلن فعلی کاربر (تعداد کلیک/دانلود).",
+    allow_global=True,
+    allow_non_admin=True,
+)
+
+HelpCmd.set_help(
+    command="addpremium",
+    description="ارتقا پلن کاربر به سطوح روزانه/هفتگی/ماهانه.",
+    allow_global=False,
+    allow_non_admin=False,
+)
+
+HelpCmd.set_help(
+    command="delete_premium",
+    description="حذف پلن پریمیوم کاربر و بازگشت به رایگان.",
+    allow_global=False,
+    allow_non_admin=False,
+)
