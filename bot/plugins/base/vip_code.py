@@ -1,5 +1,6 @@
 import uuid
 import logging
+import datetime
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.types import Message
@@ -49,7 +50,7 @@ async def redeem_vip_code(user_id: int, code: str):
     
     return True, f"✅ کد VIP با موفقیت اعمال شد!\n\nپلن {VIP_PLAN_NAME.replace('_', ' ')} (10 لینک روزانه، {days} روز) فعال شد.\nبررسی کنید: /myplan"
 
-@Client.on_message(filters.private & PyroFilters.admin() & filters.command("vip_code"))
+@Client.on_message(filters.private & PyroFilters.admin() & filters.command("vip_code"), group=0)
 @RateLimiter.hybrid_limiter(func_count=1)
 async def generate_vip(client: Client, message: Message):
     """تولید کد VIP توسط ادمین."""
@@ -64,7 +65,7 @@ async def generate_vip(client: Client, message: Message):
     else:
         await message.reply("❌ خطا در ذخیره کد VIP. دوباره امتحان کنید.")
 
-@Client.on_message(filters.private & filters.command("vip_code"))
+@Client.on_message(filters.private & filters.command("vip_code"), group=1)
 @RateLimiter.hybrid_limiter(func_count=1)
 async def redeem_vip(client: Client, message: Message):
     """فعال‌سازی پلن VIP توسط کاربر با کد."""
