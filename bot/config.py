@@ -25,41 +25,20 @@ from typing_extensions import TypedDict
 MongoSRVDsn = Annotated[MultiHostUrl, UrlConstraints(allowed_schemes=["mongodb+srv"])]
 BASE_PATH = Path(__file__).parent.parent
 
-
-# bot/config.py
-
-# ... (سایر تنظیمات و ایمپورت‌ها) ...
-
-# ------------------------------------------------------------------
-# !!! این بخش را در bot/config.py جایگزین DAILY_LIMITS قبلی کنید !!!
-# مقادیر، اکنون "تعداد لینک در روز" هستند.
-DAILY_LIMITS = {
-    # پلن رایگان (بدون تاریخ انقضا)
-    "free": 2,
-    
-    # پلن‌های دائمی (بدون تاریخ انقضا) - تنظیم شده به 10 سال در plans.py
-    "daily_5": 5,
+DAILY_LINK_LIMITS = {
+    "free": 2,  # 2 clicks per day, no expiry
+    "daily_5": 5,  # 5 clicks per day, 1 day expiry
     "daily_10": 10,
     "daily_20": 20,
-    
-    # پلن‌های هفتگی (7 روز)
-    "weekly_5": 5,
+    "weekly_5": 5,  # 5 clicks per day, 7 days expiry
     "weekly_10": 10,
     "weekly_15": 15,
     "weekly_20": 20,
-    
-    # پلن‌های ماهانه (30 روز)
-    "monthly_5": 5,
+    "monthly_5": 5,  # 5 clicks per day, 30 days expiry
     "monthly_10": 10,
     "monthly_15": 15,
     "monthly_20": 20,
 }
-# !!! پایان بخش جایگزین شده !!!
-# ------------------------------------------------------------------
-
-# ... (ادامه فایل) ...
-
-
 
 class ChannelInfo(TypedDict):
     is_private: bool
