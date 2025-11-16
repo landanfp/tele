@@ -19,8 +19,9 @@ VIP_PLAN_NAME = "vip_15days"  # 10 لینک روزانه، 15 روز
 VIP_PLAN_DURATION = 15  # روز
 LOG_CHANNEL = config.BACKUP_CHANNEL  # Assuming backup as log
 
-# فرض بر این که admin_filter از pyrofilters تعریف شده یا مشابه config.ROOT_ADMINS_ID
+# تعریف admin_filter با استفاده از filters.user برای ROOT_ADMINS_ID
 admin_filter = filters.user(config.ROOT_ADMINS_ID)
+
 async def generate_vip_code():
     """تولید کد VIP منحصر به فرد."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -79,14 +80,18 @@ async def create_vip_code(client: Client, message: Message):
 async def redeem_vip_code(client: Client, message: Message):
     """فعال‌سازی کد VIP برای کاربر."""
     user_id = message.from_user.id
-    user_info = await db.col.find_one({'id': user_id})  # فرض بر col برای users
+    logger.info(f"Redeem VIP attempt by user {user_id}, command: {message.command}")
+
+    user_info = await db.db["Users"].find_one({'_id': user_id})  # تصحیح: db.db["Users"] و '_id'
 
     if not user_info:
+        logger.info(f"User {user_id} not found in DB")
         await message.reply("ابتدا /start را ارسال کنید.")
         return
 
     current_plan = user_info.get('plan', 'free')
-    if current_plan in ["silver", "gold", "diamond"]:  # تطبیق با کد جدید، اگر پلن‌های دیگه داری تنظیم کن
+    logger.info(f"Current plan for user {user_id}: {current_plan}")
+    if current_plan != 'free':  # ساده‌تر: هر پلن غیر free رد کن (اگر silver/gold/diamond نداری، این بهتره)
         await message.reply("کاربرانی که پلن فعال دارند نمی‌توانند از کد VIP استفاده کنند.")
         return
 
@@ -95,6 +100,7 @@ async def redeem_vip_code(client: Client, message: Message):
         return
 
     code = message.command[1].strip().upper()
+    logger.info(f"Redeeming code: {code} for user {user_id}")
     if len(code) != 8 or not code.isalnum():
         await message.reply("❌ کد VIP باید ۸ کاراکتر معتبر (حروف و اعداد) باشد.")
         return
@@ -111,8 +117,10 @@ async def redeem_vip_code(client: Client, message: Message):
             except Exception as e:
                 logger.warning(f"Failed to log VIP redemption: {e}")
         else:
+            logger.warning(f"Code {code} already used or mark failed")
             await message.reply("کد وارد شده قبلاً استفاده شده است.")
     else:
+        logger.warning(f"Invalid VIP code: {code}")
         await message.reply("کد وارد شده نامعتبر است.")
 
 # HelpCmd برای هر دو
