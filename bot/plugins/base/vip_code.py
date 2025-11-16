@@ -20,8 +20,7 @@ VIP_PLAN_DURATION = 15  # روز
 LOG_CHANNEL = config.BACKUP_CHANNEL  # Assuming backup as log
 
 # فرض بر این که admin_filter از pyrofilters تعریف شده یا مشابه config.ROOT_ADMINS_ID
-admin_filter = PyroFilters.admin_filter  # یا تعریف کن: filters.user(config.ROOT_ADMINS_ID)
-
+admin_filter = filters.user(config.ROOT_ADMINS_ID)
 async def generate_vip_code():
     """تولید کد VIP منحصر به فرد."""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
