@@ -17,7 +17,7 @@ LOG_CHANNEL = config.BACKUP_CHANNEL  # Assuming backup as log
 async def get_user_stats(user_id, client=None):
     await db.check_and_update_expired_plan(user_id, client)
     await db.check_and_reset_daily_usage(user_id)
-    user = await db.db["Users"].find_one({'id': user_id})
+    user = await db.db["Users"].find_one({'_id': user_id})
     if user:
         plan = user.get('plan', 'free')
         daily_clicks = user.get('daily_clicks', 0)
