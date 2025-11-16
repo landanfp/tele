@@ -118,6 +118,8 @@ async def file_start(
     base64_file_link = message.text.split(maxsplit=1)[1]
     file_document = await database.get_link_document(base64_file_link=base64_file_link)
 
+    user_id = message.from_user.id
+
     if not file_document:
         try:
             codex_message_ids = DataEncoder.codex_decode(
@@ -157,6 +159,9 @@ async def file_start(
             file_origin=file_origin,
             protect_content=config.PROTECT_CONTENT,
         )
+
+    # افزایش تعداد کلیک/دانلود
+    await database.increase_daily_clicks(user_id)
 
     delete_n_seconds = options.settings.AUTO_DELETE_SECONDS
 
@@ -236,4 +241,4 @@ HelpCmd.set_help(
     description=file_start.__doc__,
     allow_global=True,
     allow_non_admin=True,
-        )
+    )
