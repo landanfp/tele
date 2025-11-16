@@ -1,9 +1,3 @@
-New Version <br>
-<b>🧩 Feature CUSTOM_CAPTION added.</b><br>
-<b>🧩 /create_vip added.</b><br>
-<b>🧩 /vip added.</b><br>
-<b>🧩 /ban_list added.</b><br>
-<b>🧩 /myplan added.</b><br>
-<b>🧩 /addpremium added.</b><br>
-<b>🧩 /delete_premium added.</b><br>
-<b>🧩 /create_vip added.</b><br>
+New Version v5<br>
+<b>🧩 /gift added.✖️</b><br>
+<b>🧩 /upgrade added.✖️</b><br>
