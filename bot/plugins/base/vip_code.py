@@ -50,40 +50,34 @@ async def redeem_vip_code(user_id: int, code: str):
     
     return True, f"✅ کد VIP با موفقیت اعمال شد!\n\nپلن {VIP_PLAN_NAME.replace('_', ' ')} (10 لینک روزانه، {days} روز) فعال شد.\nبررسی کنید: /myplan"
 
-@Client.on_message(filters.private & PyroFilters.admin() & filters.command("vip_code"), group=0)
+@Client.on_message(filters.private & filters.command("vip_code"))
 @RateLimiter.hybrid_limiter(func_count=1)
-async def generate_vip(client: Client, message: Message):
-    """تولید کد VIP توسط ادمین."""
-    code = await generate_vip_code()
-    saved = await save_vip_code(code)
-    if saved:
-        await message.reply(f"✅ کد VIP تولید شد: `{code}`\n\nاین کد را به کاربر بدهید تا با `/vip_code {code}` فعال کند.")
-        try:
-            await client.send_message(LOG_CHANNEL, f"🆔 کد VIP جدید تولید شد: `{code}`\nتوسط ادمین: {message.from_user.id}")
-        except Exception as e:
-            logger.warning(f"Failed to log VIP code: {e}")
-    else:
-        await message.reply("❌ خطا در ذخیره کد VIP. دوباره امتحان کنید.")
-
-@Client.on_message(filters.private & filters.command("vip_code"), group=1)
-@RateLimiter.hybrid_limiter(func_count=1)
-async def redeem_vip(client: Client, message: Message):
-    """فعال‌سازی پلن VIP توسط کاربر با کد."""
-    if len(message.command) != 2:
-        await message.reply("⚠️ استفاده: `/vip_code [کد]`\nمثال: `/vip_code ABC12345`")
-        return
-    
-    code = message.command[1].upper()
+async def vip_code_handler(client: Client, message: Message):
+    """تولید یا فعال‌سازی کد VIP."""
     user_id = message.from_user.id
-    success, msg = await redeem_vip_code(user_id, code)
-    
-    await message.reply(msg, quote=True)
-    
-    if success:
-        try:
-            await client.send_message(LOG_CHANNEL, f"🆔 کد VIP `{code}` توسط کاربر {user_id} استفاده شد.\nپلن: {VIP_PLAN_NAME}")
-        except Exception as e:
-            logger.warning(f"Failed to log VIP redemption: {e}")
+    if len(message.command) == 1:  # بدون آرگومان: تولید کد (فقط ادمین)
+        if user_id not in config.ROOT_ADMINS_ID:
+            await message.reply("❌ فقط ادمین‌ها می‌تونن کد VIP تولید کنن.")
+            return
+        code = await generate_vip_code()
+        saved = await save_vip_code(code)
+        if saved:
+            await message.reply(f"✅ کد VIP تولید شد: `{code}`\n\nاین کد را به کاربر بدهید تا با `/vip_code {code}` فعال کند.")
+            try:
+                await client.send_message(LOG_CHANNEL, f"🆔 کد VIP جدید تولید شد: `{code}`\nتوسط ادمین: {user_id}")
+            except Exception as e:
+                logger.warning(f"Failed to log VIP code: {e}")
+        else:
+            await message.reply("❌ خطا در ذخیره کد VIP. دوباره امتحان کنید.")
+    else:  # با آرگومان: redeem کد
+        code = message.command[1].upper()
+        success, msg = await redeem_vip_code(user_id, code)
+        await message.reply(msg, quote=True)
+        if success:
+            try:
+                await client.send_message(LOG_CHANNEL, f"🆔 کد VIP `{code}` توسط کاربر {user_id} استفاده شد.\nپلن: {VIP_PLAN_NAME}")
+            except Exception as e:
+                logger.warning(f"Failed to log VIP redemption: {e}")
 
 HelpCmd.set_help(
     command="vip_code",
