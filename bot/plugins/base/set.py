@@ -27,13 +27,13 @@ user_awaiting_channel_input = {}
 def get_admin_buttons():
     """Generate buttons for each admin ID and an add button."""
     buttons = [[InlineKeyboardButton("➕ افزودن ادمین", callback_data="add_admin")]]
-    for admin_id in config.ROOT_ADMINS_ID:
+    for admin_id in config.ROOT_ADMINS_ID:  # Tuple iteration works fine
         buttons.append([InlineKeyboardButton(f"Admin ID: {admin_id}", callback_data=f"admin_{admin_id}")])
     return InlineKeyboardMarkup(buttons)
 
 def get_channel_buttons():
     """Generate buttons for each channel and an add button at the top."""
-    channels = config.FORCE_SUB_CHANNELS
+    channels = config.FORCE_SUB_CHANNELS  # Now tuple
     buttons = [[InlineKeyboardButton("➕ افزودن کانال", callback_data="add_channel")]]
     for channel in channels:
         display_name = f"Channel ID: {channel}"
@@ -153,10 +153,10 @@ async def remove_admin_callback(client: Client, query: CallbackQuery):
         await query.answer("⚠️ این کاربر دیگر ادمین نیست!", show_alert=True)
         return
 
-    # Remove admin from ROOT_ADMINS_ID
+    # Remove admin from ROOT_ADMINS_ID (convert to list, remove, back to tuple)
     new_admin_ids = list(config.ROOT_ADMINS_ID)
     new_admin_ids.remove(admin_id)
-    config.ROOT_ADMINS_ID = new_admin_ids  # Update config list
+    config.ROOT_ADMINS_ID = tuple(new_admin_ids)  # Ensure tuple
     logger.info(f"Admin ID {admin_id} removed by user {user_id}. Updated ROOT_ADMINS_ID: {config.ROOT_ADMINS_ID}")
 
     # Send notification to the removed admin
@@ -288,7 +288,7 @@ async def remove_channel_callback(client: Client, query: CallbackQuery):
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Ensure FORCE_SUB_CHANNELS is a list
+    # Ensure FORCE_SUB_CHANNELS is a list for manipulation
     channels = list(config.FORCE_SUB_CHANNELS)
 
     # Check if the channel_id is still in FORCE_SUB_CHANNELS
@@ -303,7 +303,7 @@ async def remove_channel_callback(client: Client, query: CallbackQuery):
 
     # Remove channel from FORCE_SUB_CHANNELS
     channels.remove(channel_id)
-    config.FORCE_SUB_CHANNELS = channels
+    config.FORCE_SUB_CHANNELS = tuple(channels)  # Back to tuple
     logger.info(f"Channel {channel_id} removed by user {user_id}. Updated FORCE_SUB_CHANNELS: {config.FORCE_SUB_CHANNELS}")
 
     # Update channel settings panel
@@ -395,7 +395,7 @@ async def receive_input_value(client: Client, message: Message):
             await message.reply_text("⚠️ این ID قبلاً در لیست ادمین‌ها وجود دارد!", quote=True)
             return
 
-        # Update ROOT_ADMINS_ID
+        # Update ROOT_ADMINS_ID (tuple + single tuple)
         config.ROOT_ADMINS_ID = config.ROOT_ADMINS_ID + (new_admin_id,)
         logger.info(f"New admin ID {new_admin_id} added by owner {user_id}. Updated ROOT_ADMINS_ID: {config.ROOT_ADMINS_ID}")
 
@@ -443,7 +443,7 @@ async def receive_input_value(client: Client, message: Message):
 
         new_channel_id = int(new_channel)
 
-        # Ensure FORCE_SUB_CHANNELS is a list
+        # Ensure FORCE_SUB_CHANNELS is a list for manipulation
         channels = list(config.FORCE_SUB_CHANNELS)
 
         # Check if the channel is already in FORCE_SUB_CHANNELS
@@ -453,7 +453,7 @@ async def receive_input_value(client: Client, message: Message):
 
         # Update FORCE_SUB_CHANNELS
         channels.append(new_channel_id)
-        config.FORCE_SUB_CHANNELS = channels
+        config.FORCE_SUB_CHANNELS = tuple(channels)  # Back to tuple
         logger.info(f"New channel {new_channel_id} added by owner {user_id}. Updated FORCE_SUB_CHANNELS: {config.FORCE_SUB_CHANNELS}")
 
         # Delete prompt and input messages
