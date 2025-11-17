@@ -71,10 +71,10 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    ROOT_ADMINS_ID: tuple[int, ...]  # No default here; handled in validator
+    ROOT_ADMINS_ID: tuple[int, ...] = tuple()  # Empty default; validator handles env
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
-    FORCE_SUB_CHANNELS: tuple[int, ...]  # No default here; handled in validator
+    FORCE_SUB_CHANNELS: tuple[int, ...] = tuple()  # Empty default; validator handles env
     AUTO_GENERATE_LINK: bool = True
 
     # Injected Config
