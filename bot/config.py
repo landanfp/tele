@@ -5,8 +5,9 @@ Config: Bot Config
 
 # ruff: noqa: ARG003
 import logging
-import os  # Added for os.environ
+import os
 import sys
+import ast  # Added for safe list/tuple eval
 from pathlib import Path
 from typing import Annotated
 
@@ -70,10 +71,10 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    ROOT_ADMINS_ID: tuple[int, ...] = tuple(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # Changed to tuple with env default
+    ROOT_ADMINS_ID: tuple[int, ...]  # No default here; handled in validator
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
-    FORCE_SUB_CHANNELS: tuple[int, ...] = ()  # Changed to tuple for consistency
+    FORCE_SUB_CHANNELS: tuple[int, ...]  # No default here; handled in validator
     AUTO_GENERATE_LINK: bool = True
 
     # Injected Config
@@ -86,16 +87,40 @@ class Config(BaseSettings):
     @field_validator("ROOT_ADMINS_ID", "FORCE_SUB_CHANNELS", mode="before")
     @classmethod
     def convert_to_tuple(cls, value: int | str | tuple[int] | list[int]) -> tuple[int, ...]:
-        if isinstance(value, (int, str)):
-            if isinstance(value, str):
-                # Split and convert string to tuple
-                ids = [int(x.strip()) for x in value.split() if x.strip()]
-            else:
-                ids = [value]
-            return tuple(ids)
-        elif isinstance(value, list):
-            return tuple(value)
-        return value
+        if value is None:
+            return tuple()  # Empty tuple if no value
+        if isinstance(value, (int, tuple, list)):
+            if isinstance(value, int):
+                return (value,)
+            elif isinstance(value, (tuple, list)):
+                # If it's already a tuple/list of ints, return as tuple
+                return tuple(value)
+        elif isinstance(value, str):
+            # Handle space-separated: "763990585 705518424"
+            if ' ' in value:
+                ids = [int(x.strip()) for x in value.split() if x.strip().isdigit()]
+                return tuple(ids)
+            # Handle comma-separated: "763990585,705518424"
+            elif ',' in value:
+                ids = [int(x.strip()) for x in value.split(',') if x.strip().isdigit()]
+                return tuple(ids)
+            # Handle JSON-like list: "[763990585,705518424]"
+            elif value.startswith('[') and value.endswith(']'):
+                try:
+                    # Safely eval as list (ast.literal_eval is safe)
+                    parsed = ast.literal_eval(value)
+                    if isinstance(parsed, list):
+                        ids = [int(x) for x in parsed if isinstance(x, (int, str)) and str(x).isdigit()]
+                        return tuple(ids)
+                except (ValueError, SyntaxError):
+                    pass
+            # Fallback: treat as single ID
+            try:
+                return (int(value),)
+            except ValueError:
+                pass
+        # If all fails, empty tuple
+        return tuple()
 
     @field_validator("channels_n_invite", mode="before")
     @classmethod
