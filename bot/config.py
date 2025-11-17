@@ -5,6 +5,7 @@ Config: Bot Config
 
 # ruff: noqa: ARG003
 import logging
+import os  # Added for os.environ
 import sys
 from pathlib import Path
 from typing import Annotated
@@ -39,7 +40,7 @@ DAILY_LINK_LIMITS = {
     "monthly_15": 15,
     "monthly_20": 20,
     "vip_15days": 10,  # 10 clicks per day, 15 days expiry (VIP special)
-    "gift_7days": 5,  # 5 clicks per day, 7 days expiry (Gift plan)
+    "gift_7days": 5,  # 5 clicks per day, 7 days expiry (Gift plan - one-time only)
 }
 
 class ChannelInfo(TypedDict):
@@ -69,10 +70,10 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    ROOT_ADMINS_ID: list[int]
+    ROOT_ADMINS_ID: tuple[int, ...] = tuple(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # Changed to tuple with env default
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
-    FORCE_SUB_CHANNELS: list[int] = []
+    FORCE_SUB_CHANNELS: tuple[int, ...] = ()  # Changed to tuple for consistency
     AUTO_GENERATE_LINK: bool = True
 
     # Injected Config
@@ -84,9 +85,16 @@ class Config(BaseSettings):
 
     @field_validator("ROOT_ADMINS_ID", "FORCE_SUB_CHANNELS", mode="before")
     @classmethod
-    def convert_int_to_list(cls, value: int | list[int]) -> list[int]:
-        if isinstance(value, int):
-            return [value]
+    def convert_to_tuple(cls, value: int | str | tuple[int] | list[int]) -> tuple[int, ...]:
+        if isinstance(value, (int, str)):
+            if isinstance(value, str):
+                # Split and convert string to tuple
+                ids = [int(x.strip()) for x in value.split() if x.strip()]
+            else:
+                ids = [value]
+            return tuple(ids)
+        elif isinstance(value, list):
+            return tuple(value)
         return value
 
     @field_validator("channels_n_invite", mode="before")
