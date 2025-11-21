@@ -113,7 +113,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
     if user_id not in config.ROOT_ADMINS_ID and config.FORCE_SUB_CHANNELS:
         if await database.is_user_banned(user_id):
-             await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
+             await callback.answer("❌ شما از استفاده از ربات محروم هستید.", show_alert=False)
              return
 
         try:
@@ -151,7 +151,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
             option_key=options.settings.START_MESSAGE
         )
     else:
-        await callback.answer("❌ هنوز در کانال‌های مورد نظر عضو نشده‌اید!", show_alert=True)
+        await callback.answer("❌ هنوز در کانال‌های مورد نظر عضو نشده‌اید!", show_alert=False)
 
 
 @Client.on_message(
