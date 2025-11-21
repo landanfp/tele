@@ -219,9 +219,18 @@ async def return_start(
     for channel, channel_info in channels_n_invite.items():
         buttons.append([InlineKeyboardButton(text=channel, url=channel_info["invite_link"])])
 
-    if message.command[1:]:
-        link = f"https://t.me/{client.me.username}?start={message.command[1]}"  # type: ignore[reportOptionalMemberAccess]
-        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
+    # --- اصلاحات انجام شده در این بخش ---
+    start_arg = message.command[1] if len(message.command) > 1 else ""
+    
+    # ساخت لینک؛ اگر آرگومانی باشد به لینک اضافه می‌شود، در غیر این صورت فقط start
+    link_suffix = f"?start={start_arg}" if start_arg else "?start"
+    link = f"https://t.me/{client.me.username}{link_suffix}"  # type: ignore[reportOptionalMemberAccess]
+
+    # تغییر متن دکمه بر اساس وضعیت
+    btn_text = "✅ عضو شدم - دریافت فایل" if start_arg else "✅ عضو شدم"
+
+    buttons.append([InlineKeyboardButton(text=btn_text, url=link)])
+    # ------------------------------------
 
     return await PyroHelper.option_message(
         client=client,
@@ -236,4 +245,4 @@ HelpCmd.set_help(
     description=file_start.__doc__,
     allow_global=True,
     allow_non_admin=True,
-        )
+)
