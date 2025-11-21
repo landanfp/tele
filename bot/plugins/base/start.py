@@ -1,6 +1,8 @@
 from pyrogram import filters
 from pyrogram.client import Client
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import UserNotParticipant
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from bot.config import config
 from bot.database import MongoDB
@@ -91,6 +93,65 @@ class FileSender:
                 )
                 all_sent_files.extend(send_files) if isinstance(send_files, list) else all_sent_files.append(send_files)
         return all_sent_files
+
+
+@Client.on_callback_query(filters.regex("^check_sub$"))
+async def check_sub_callback(client: Client, callback: CallbackQuery):
+    """
+    هندلر بررسی عضویت برای دکمه شیشه‌ای (مخصوص استارت خالی).
+    اگر کاربر عضو شده باشد، پیام قفل را حذف کرده و پیام استارت را می‌فرستد.
+    """
+    user_id = callback.from_user.id
+    status = [
+        ChatMemberStatus.OWNER,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.MEMBER,
+    ]
+    
+    is_subscribed = True
+    
+    # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
+    if user_id not in config.ROOT_ADMINS_ID and config.FORCE_SUB_CHANNELS:
+        if await database.is_user_banned(user_id):
+             await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
+             return
+
+        try:
+            joined_request_channel = await database.user_requested_channels(user_id)
+
+            for channel_info in config.channels_n_invite.values():
+                channel_is_private = channel_info["is_private"]
+                channel_id = channel_info["channel_id"]
+
+                if channel_is_private and channel_id not in joined_request_channel:
+                    is_subscribed = False
+                    break
+
+                if not channel_is_private:
+                    try:
+                        member = await client.get_chat_member(chat_id=channel_id, user_id=user_id)
+                        if member.status not in status:
+                            is_subscribed = False
+                            break
+                    except UserNotParticipant:
+                        is_subscribed = False
+                        break
+        except Exception:
+             # در صورت بروز خطا فرض را بر عدم عضویت می‌گذاریم
+             is_subscribed = False
+
+    if is_subscribed:
+        # 1. حذف پیام جوین اجباری
+        await callback.message.delete()
+        
+        # 2. ارسال پیام استارت (خوش‌آمدگویی)
+        await PyroHelper.option_message(
+            client=client,
+            message=callback.message, # استفاده از کانتکست پیام قبلی
+            option_key=options.settings.START_MESSAGE
+        )
+    else:
+        await callback.answer("❌ هنوز در کانال‌های مورد نظر عضو نشده‌اید!", show_alert=True)
 
 
 @Client.on_message(
@@ -219,18 +280,17 @@ async def return_start(
     for channel, channel_info in channels_n_invite.items():
         buttons.append([InlineKeyboardButton(text=channel, url=channel_info["invite_link"])])
 
-    # --- اصلاحات انجام شده در این بخش ---
     start_arg = message.command[1] if len(message.command) > 1 else ""
     
-    # ساخت لینک؛ اگر آرگومانی باشد به لینک اضافه می‌شود، در غیر این صورت فقط start
-    link_suffix = f"?start={start_arg}" if start_arg else "?start"
-    link = f"https://t.me/{client.me.username}{link_suffix}"  # type: ignore[reportOptionalMemberAccess]
-
-    # تغییر متن دکمه بر اساس وضعیت
-    btn_text = "✅ عضو شدم - دریافت فایل" if start_arg else "✅ عضو شدم"
-
-    buttons.append([InlineKeyboardButton(text=btn_text, url=link)])
-    # ------------------------------------
+    if start_arg:
+        # اگر لینک فایل وجود دارد، دکمه باید لینک باشد تا کاربر فایل را بگیرد
+        # (در این حالت نمی‌توان پیام قبلی را به راحتی حذف کرد که طبیعی است)
+        link = f"https://t.me/{client.me.username}?start={start_arg}"  # type: ignore[reportOptionalMemberAccess]
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
+    else:
+        # اگر استارت خالی است، از دکمه Callback استفاده می‌کنیم
+        # این باعث می‌شود پیام «جوین اجباری» پس از تایید عضویت حذف شود
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم", callback_data="check_sub")])
 
     return await PyroHelper.option_message(
         client=client,
