@@ -61,16 +61,16 @@ async def change_list_handler(client: Client, message: Message):
             logger.warning("VIPCodes collection is empty")
             return
 
-        # فرمت جدول Markdown ساده‌تر
+        # فرمت لیست ساده بدون parse_mode (برای جلوگیری از error Markdown)
         text = "📋 **لیست کدهای VIP:**\n\n"
         for code_doc in codes:
             code = code_doc.get("code", "N/A")
             used = "✅ استفاده شده" if code_doc.get("used", False) else "❌ موجود"
             used_by = str(code_doc.get("used_by", "هیچکس")) if code_doc.get("used", False) else "-"
             used_at = code_doc.get("used_at", "-")
-            text += f"• `{code}` - {used} (توسط: {used_by} در {used_at})\n"
+            text += f"• {code} - {used} (توسط: {used_by} در {used_at})\n"
 
-        await message.reply(text, parse_mode="Markdown")
+        await message.reply(text)  # بدون parse_mode
         logger.info(f"change_list sent to {message.from_user.id}, {len(codes)} codes found")
     except Exception as e:
         await message.reply("❌ خطا در نمایش لیست. لاگ‌ها را چک کنید.")
