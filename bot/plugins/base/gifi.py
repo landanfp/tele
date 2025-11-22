@@ -18,7 +18,7 @@ user_attempts = {}
 user_failed = {}
 user_last_use = {}  # برای cooldown: {user_id: timestamp}
 
-COOLDOWN_SECONDS = 120  # 2 دقیقه (بعداً به 86400 برای یک روز تغییر بده)
+COOLDOWN_SECONDS = 43200  # 2 دقیقه (بعداً به 86400 برای یک روز تغییر بده)
 VIP_PLAN_NAME = "vip_15days"  # از vip_code.py
 LOG_CHANNEL = config.BACKUP_CHANNEL  # کانال لاگ
 
@@ -32,12 +32,13 @@ async def gifi_command(client: Client, message):
         time_since_last = current_time - user_last_use[user_id]
         if time_since_last < COOLDOWN_SECONDS:
             remaining = COOLDOWN_SECONDS - time_since_last
-            minutes = int(remaining // 60)
-            seconds = int(remaining % 60)
-            await message.reply(
-                f"⏰ صبر کن! می‌تونی هر {COOLDOWN_SECONDS // 60} دقیقه یکبار بازی کنی.\n"
-                f"زمان باقی‌مانده: {minutes} دقیقه و {seconds} ثانیه."
-            )
+            hours = int(remaining // 3600)
+minutes = int((remaining % 3600) // 60)
+seconds = int(remaining % 60)
+await message.reply(
+    f"⏰ صبر کن! می‌تونی هر 12 ساعت یکبار بازی کنی.\n"
+    f"زمان باقی‌مانده: {hours} ساعت و {minutes} دقیقه و {seconds} ثانیه."
+)
             return
 
     lucky_number = random.randint(1, 10)
