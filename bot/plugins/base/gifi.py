@@ -7,6 +7,7 @@ from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from bot.database import MongoDB
+from bot.config import config  # برای LOG_CHANNEL
 from bot.utilities.pyrotools import HelpCmd
 
 database = MongoDB()
@@ -18,6 +19,8 @@ user_failed = {}
 user_last_use = {}  # برای cooldown: {user_id: timestamp}
 
 COOLDOWN_SECONDS = 120  # 2 دقیقه (بعداً به 86400 برای یک روز تغییر بده)
+VIP_PLAN_NAME = "vip_15days"  # از vip_code.py
+LOG_CHANNEL = config.BACKUP_CHANNEL  # کانال لاگ
 
 @Client.on_message(filters.private & filters.command("gifi"))
 async def gifi_command(client: Client, message):
@@ -41,7 +44,7 @@ async def gifi_command(client: Client, message):
 
     # ذخیره اطلاعات کاربر
     user_lucky_numbers[user_id] = lucky_number
-    user_attempts[user_id] = 9  # تغییر به 5 تلاش
+    user_attempts[user_id] = 5  # تغییر به 5 تلاش
     user_failed[user_id] = True
     user_last_use[user_id] = current_time  # آپدیت cooldown
 
@@ -104,6 +107,18 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
             await callback_query.message.reply(
                 f"تبریک شما برنده شدید! 🪅\nکد جایزه: `{code_str}`\n\n(این کد رو با /vip استفاده کن!)"
             )
+
+            # لاگ در کانال LOG_CHANNEL
+            user_name = callback_query.from_user.first_name or "نامشخص"
+            log_text = f"""✅ جایزه واریز شد.
+
+👤 نام کاربر: {user_name}
+🆔 آیدی عددی: {user_id}
+🪅 نوع پلن: {VIP_PLAN_NAME}"""
+            try:
+                await client.send_message(LOG_CHANNEL, log_text)
+            except Exception as e:
+                print(f"Failed to send log to channel {LOG_CHANNEL}: {e}")  # ساده لاگ
         else:
             await callback_query.message.reply("تبریک برنده شدی! 🪅 (متأسفانه کد جایزه موجود نیست. بعداً امتحان کن.)")
         return
@@ -145,7 +160,7 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
 
 HelpCmd.set_help(
     command="gifi",
-    description="بازی حدس جایزه: یکی از دکمه‌ها جایزه داره، پیداش کن! 9گ۵ تلاش داری، هر ۲ دقیقه یکبار)",
+    description="بازی حدس جایزه: یکی از دکمه‌ها جایزه داره، پیداش کن! (۵ تلاش داری، هر ۲ دقیقه یکبار)",
     allow_global=True,
     allow_non_admin=True,
 )
