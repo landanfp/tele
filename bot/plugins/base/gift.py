@@ -108,7 +108,7 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     print(f"DEBUG: Phone received: {phone_number}")
     
     # ارسال استیکر loading
-    loading_sticker_message = await message.reply_sticker("CAACAgUAAxkBAAEH1HRkX9q3LkNg8p8cKwAAAVWlFq5iO54AApMBAAJZVbFKjN6H2mu1tEYeBA")
+    loading_sticker_message = await message.reply_sticker("CAACAgIAAxkBAALmzGXSSt3ppnOsSl_spnAP8wHC26jpAAJEGQACCOHZSVKp6_XqghKoHgQ")
     print(f"DEBUG: Loading sticker sent for user {user_id}")
     
     # صبر 4 ثانیه
