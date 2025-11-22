@@ -54,23 +54,25 @@ async def change_list_handler(client: Client, message: Message):
     logger.info(f"change_list called by user {message.from_user.id}")
     try:
         collection = database.db["VIPCodes"]
-        codes = await collection.find({}).to_list(length=None)
+        codes = await collection.find({}).sort("code").to_list(length=None)  # مرتب بر اساس کد
 
         if not codes:
             await message.reply("📝 لیست کدهای VIP خالی است.\nابتدا با /add_change کدها را اضافه کنید.")
             logger.warning("VIPCodes collection is empty")
             return
 
-        # فرمت لیست ساده بدون parse_mode (برای جلوگیری از error Markdown)
+        # فرمت جدید: {code} - ❌ یا {code} - ✅ > {user_id}
         text = "📋 **لیست کدهای VIP:**\n\n"
         for code_doc in codes:
             code = code_doc.get("code", "N/A")
-            used = "✅ استفاده شده" if code_doc.get("used", False) else "❌ موجود"
-            used_by = str(code_doc.get("used_by", "هیچکس")) if code_doc.get("used", False) else "-"
-            used_at = code_doc.get("used_at", "-")
-            text += f"• {code} - {used} (توسط: {used_by} در {used_at})\n"
+            used = code_doc.get("used", False)
+            if used:
+                used_by = str(code_doc.get("used_by", "نامشخص"))
+                text += f"{code} - ✅ > {used_by}\n"
+            else:
+                text += f"{code} - ❌\n"
 
-        await message.reply(text)  # بدون parse_mode
+        await message.reply(text)
         logger.info(f"change_list sent to {message.from_user.id}, {len(codes)} codes found")
     except Exception as e:
         await message.reply("❌ خطا در نمایش لیست. لاگ‌ها را چک کنید.")
