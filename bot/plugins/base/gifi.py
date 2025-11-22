@@ -22,6 +22,22 @@ COOLDOWN_SECONDS = 43200  # 12 ساعت
 VIP_PLAN_NAME = "vip_15days"  # از vip_code.py
 LOG_CHANNEL = config.BACKUP_CHANNEL  # کانال لاگ
 
+def is_markup_different(old_markup, new_markup):
+    """چک اگر markup جدید متفاوت باشه (برای جلوگیری از MESSAGE_NOT_MODIFIED)."""
+    if not old_markup:
+        return True
+    old_keyboard = old_markup.inline_keyboard
+    new_keyboard = new_markup.inline_keyboard
+    if len(old_keyboard) != len(new_keyboard):
+        return True
+    for old_row, new_row in zip(old_keyboard, new_keyboard):
+        if len(old_row) != len(new_row):
+            return True
+        for old_btn, new_btn in zip(old_row, new_row):
+            if old_btn.text != new_btn.text or old_btn.callback_data != new_btn.callback_data:
+                return True
+    return False
+
 @Client.on_message(filters.private & filters.command("gifi"))
 async def gifi_command(client: Client, message):
     user_id = message.from_user.id
@@ -103,7 +119,10 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
                     new_row.append(btn)
             new_keyboard.append(new_row)
 
-        await msg.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_keyboard))
+        new_markup = InlineKeyboardMarkup(new_keyboard)
+        if is_markup_different(msg.reply_markup, new_markup):
+            await msg.edit_reply_markup(reply_markup=new_markup)
+
         user_attempts[user_id] = 0
         user_failed[user_id] = False  # چون برده
 
@@ -153,7 +172,9 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
                 new_row.append(btn)
         new_keyboard.append(new_row)
 
-    await msg.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_keyboard))
+    new_markup = InlineKeyboardMarkup(new_keyboard)
+    if is_markup_different(msg.reply_markup, new_markup):
+        await msg.edit_reply_markup(reply_markup=new_markup)
 
     # اگر تلاش تموم شد و نبرده بود
     if user_attempts[user_id] == 0 and user_failed.get(user_id, True):
@@ -171,7 +192,9 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
 
         final_layout = [final_keyboard[i:i + 3] for i in range(0, 10, 3)]
 
-        await msg.edit_reply_markup(reply_markup=InlineKeyboardMarkup(final_layout))
+        final_markup = InlineKeyboardMarkup(final_layout)
+        if is_markup_different(msg.reply_markup, final_markup):
+            await msg.edit_reply_markup(reply_markup=final_markup)
 
 HelpCmd.set_help(
     command="gifi",
