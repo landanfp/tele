@@ -3,12 +3,47 @@ import asyncio
 import datetime
 from pyrogram import filters
 from pyrogram.client import Client
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, CallbackQuery  # اضافه: InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton  # بدون Inline
 from pyrogram.errors import FloodWait
 
-# ... (بقیه importها و متغیرها مثل قبل: config, MongoDB, etc.)
+from bot.config import config, DAILY_LINK_LIMITS
+from bot.database import MongoDB
+from bot.utilities.helpers import RateLimiter
+from bot.utilities.pyrofilters import PyroFilters
+from bot.utilities.pyrotools import HelpCmd
 
-# ... (functions: is_gift_plan_used, get_user_state, etc. مثل قبل)
+database = MongoDB()
+db = database
+LOG_CHANNEL = config.BACKUP_CHANNEL
+GIFT_PLAN_NAME = "gift_7days"
+GIFT_PLAN_DURATION = 7
+
+# Simple state manager using a dictionary (in production, consider using Redis or DB for persistence)
+user_states = {}  # {user_id: {'step': str, 'phone': str, 'name': str}}
+
+async def is_gift_plan_used(user_id: int) -> bool:
+    """چک می‌کند آیا کاربر قبلاً از پلن هدیه استفاده کرده است."""
+    print(f"DEBUG: Checking gift plan used for user {user_id}")
+    user = await db.db["Users"].find_one({'_id': user_id, 'plan': GIFT_PLAN_NAME})
+    used = True if user and user.get('plan_expiry') is not None else False
+    print(f"DEBUG: Gift plan used? {used}")
+    return used
+
+def get_user_state(user_id: int):
+    """دریافت state کاربر."""
+    state = user_states.get(user_id, {})
+    print(f"DEBUG: Current state for user {user_id}: {state}")
+    return state
+
+def set_user_state(user_id: int, state: dict):
+    """تنظیم state کاربر."""
+    user_states[user_id] = state
+    print(f"DEBUG: Set state for user {user_id}: {state}")
+
+def clear_user_state(user_id: int):
+    """پاک کردن state کاربر."""
+    user_states.pop(user_id, None)
+    print(f"DEBUG: Cleared state for user {user_id}")
 
 @Client.on_message(filters.command("gift") & filters.private & PyroFilters.subscription())
 @RateLimiter.hybrid_limiter(func_count=1)
@@ -27,6 +62,7 @@ async def activate_gift_plan(client: Client, message: Message) -> None:
     if user_info:
         current_plan = user_info.get('plan', 'free')
         print(f"DEBUG: Current plan: {current_plan}")
+        # رد کردن کاربران با پلن‌های غیررایگان (پرمیوم)
         if current_plan != 'free':
             await message.reply_text("⚠️ شما به دلیل داشتن پلن ویژه قادر به دریافت این هدیه نیستید.")
             return
@@ -38,44 +74,20 @@ async def activate_gift_plan(client: Client, message: Message) -> None:
     # تنظیم state اولیه
     set_user_state(user_id, {'step': 'waiting_phone'})
     
-    # اضافه: Inline Keyboard برای شروع
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📱 اشتراک‌گذاری شماره تلفن", callback_data="gift_share_contact")]
-    ])
+    # کیبورد با دکمه Share Contact (بدون Inline)
+    markup = ReplyKeyboardMarkup(
+        [[KeyboardButton("📱 Share Contact", request_contact=True)]],
+        resize_keyboard=True,
+        one_time_keyboard=True  # فقط یک بار نمایش داده بشه
+    )
     
     await message.reply_text(
         "🎁 برای فعال‌سازی پلن هدیه، ابتدا اطلاعات خود را تأیید کنید.\n\n"
-        "👆 روی دکمه زیر کلیک کنید تا شماره تلفن واقعی‌تون رو به اشتراک بذارید.",
+        "📱 لطفاً دکمه 'Share Contact' را بزنید و شماره تلفن واقعی خود را به اشتراک بگذارید.",
         reply_markup=markup
     )
     print(f"DEBUG: Waiting for phone from user {user_id}")
 
-@Client.on_callback_query(filters.regex(r"^gift_share_contact$") & filters.private)
-@RateLimiter.hybrid_limiter(func_count=1)
-async def handle_share_contact_callback(client: Client, callback: CallbackQuery) -> None:
-    """Callback برای دکمه Inline Share Contact – نمایش ReplyKeyboard."""
-    user_id = callback.from_user.id
-    state = get_user_state(user_id)
-    
-    if state.get('step') != 'waiting_phone':
-        await callback.answer("❌ این مرحله منقضی شده. دوباره /gift بزنید.", show_alert=True)
-        return
-    
-    # نمایش ReplyKeyboard با Share Contact
-    markup = ReplyKeyboardMarkup(
-        [[KeyboardButton("📱 Share Contact", request_contact=True)]],
-        resize_keyboard=True,
-        one_time_keyboard=True
-    )
-    
-    await callback.message.edit_text(
-        "📱 لطفاً دکمه Share Contact رو بزنید و شماره تلفن واقعی‌تون رو به اشتراک بذارید.",
-        reply_markup=markup
-    )
-    await callback.answer("دکمه Share Contact ظاهر شد!")  # تأیید بدون alert
-    print(f"DEBUG: ReplyKeyboard shown for user {user_id}")
-
-# handler برای contact (مثل قبل، اما بدون تغییر عمده)
 @Client.on_message(filters.contact & filters.private & PyroFilters.subscription())
 @RateLimiter.hybrid_limiter(func_count=1)
 async def handle_phone_share(client: Client, message: Message) -> None:
@@ -86,7 +98,7 @@ async def handle_phone_share(client: Client, message: Message) -> None:
 
     if state.get('step') != 'waiting_phone':
         print(f"DEBUG: Ignoring contact - wrong state: {state.get('step')}")
-        return
+        return  # اگر state مناسب نیست، نادیده بگیر
 
     if not hasattr(message, 'contact') or not message.contact:
         print("DEBUG: No contact in message!")
@@ -94,9 +106,10 @@ async def handle_phone_share(client: Client, message: Message) -> None:
 
     phone_number = message.contact.phone_number
     print(f"DEBUG: Phone received: {phone_number}")
+    # تنظیم state برای نام
     set_user_state(user_id, {'step': 'waiting_name', 'phone': phone_number})
     
-    # پاک کردن کیبورد Reply
+    # پاک کردن کیبورد
     remove_markup = ReplyKeyboardMarkup([], resize_keyboard=True)
     
     await message.reply_text(
@@ -105,7 +118,6 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     )
     print(f"DEBUG: Waiting for name from user {user_id}")
 
-# handler برای text (مثل قبل)
 @Client.on_message(filters.text & filters.private & PyroFilters.subscription())
 @RateLimiter.hybrid_limiter(func_count=1)
 async def handle_name_input(client: Client, message: Message) -> None:
@@ -116,7 +128,7 @@ async def handle_name_input(client: Client, message: Message) -> None:
 
     if state.get('step') != 'waiting_name':
         print(f"DEBUG: Ignoring text - wrong state: {state.get('step')}")
-        return
+        return  # اگر state مناسب نیست، نادیده بگیر
 
     full_name = message.text.strip()
     phone_number = state.get('phone', 'نامشخص')
@@ -138,11 +150,9 @@ async def handle_name_input(client: Client, message: Message) -> None:
         return
 
     try:
-        daily_limit = DAILY_LINK_LIMITS.get(GIFT_PLAN_NAME, 5)
-        # اضافه: Inline Keyboard برای موفقیت (با لینک به /myplan)
-        success_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 بررسی پلن من", callback_data="gift_check_plan")]
-        ])
+        daily_limit = DAILY_LINK_LIMITS.get(GIFT_PLAN_NAME, 5)  # فرض بر 5 کلیک روزانه
+        # پاک کردن کیبورد
+        remove_markup = ReplyKeyboardMarkup([], resize_keyboard=True)
         
         await message.reply_text(
             f"🎁 پلن هدیه 7 روزه با موفقیت برای شما فعال شد!\n\n"
@@ -150,8 +160,8 @@ async def handle_name_input(client: Client, message: Message) -> None:
             f"📱 شماره: {phone_number}\n"
             f"⏳ این پلن تا تاریخ {expiry_date.strftime('%Y/%m/%d')} معتبر است.\n"
             f"💾 محدودیت کلیک روزانه این پلن: {daily_limit} کلیک\n\n"
-            f"روی دکمه زیر کلیک کنید تا وضعیت پلن‌تون رو ببینید.",
-            reply_markup=success_markup
+            f"برای بررسی وضعیت پلن خود از دستور /myplan استفاده کنید.",
+            reply_markup=remove_markup
         )
 
         user_mention = f"[{message.from_user.first_name}](tg://user?id={user_id})"
@@ -167,6 +177,7 @@ async def handle_name_input(client: Client, message: Message) -> None:
         )
         print(f"DEBUG: Success message and log sent for user {user_id}")
 
+        # پاک کردن state
         clear_user_state(user_id)
 
     except FloodWait as e:
@@ -177,14 +188,12 @@ async def handle_name_input(client: Client, message: Message) -> None:
     except Exception as e:
         print(f"DEBUG: Error in final steps: {e}")
         await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}")
-        clear_user_state(user_id)
+        clear_user_state(user_id)  # در صورت خطا هم state را پاک کن
 
-# اضافه: Callback برای دکمه بررسی پلن (اختیاری – می‌تونه /myplan رو trigger کنه)
-@Client.on_callback_query(filters.regex(r"^gift_check_plan$") & filters.private)
-async def check_plan_callback(client: Client, callback: CallbackQuery) -> None:
-    """Callback برای بررسی پلن بعد از موفقیت."""
-    user_id = callback.from_user.id
-    await callback.message.reply_text("📋 برای بررسی وضعیت پلن، دستور /myplan رو بزنید.")
-    await callback.answer("بررسی پلن باز شد!")  # بدون alert
 
-# ... (HelpCmd مثل قبل)
+HelpCmd.set_help(
+    command="gift",
+    description="فعال‌سازی پلن هدیه 7 روزه (فقط برای کاربران رایگان، با تأیید شماره و نام).",
+    allow_global=True,
+    allow_non_admin=True,
+)
