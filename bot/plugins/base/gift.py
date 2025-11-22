@@ -3,7 +3,7 @@ import asyncio
 import datetime
 from pyrogram import filters
 from pyrogram.client import Client
-from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton  # بدون Inline
+from pyrogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from pyrogram.errors import FloodWait
 
 from bot.config import config, DAILY_LINK_LIMITS
@@ -19,7 +19,7 @@ GIFT_PLAN_NAME = "gift_7days"
 GIFT_PLAN_DURATION = 7
 
 # Simple state manager using a dictionary (in production, consider using Redis or DB for persistence)
-user_states = {}  # {user_id: {'step': str, 'phone': str, 'name': str}}
+user_states = {}  # {user_id: {'step': str, 'phone': str}}
 
 async def is_gift_plan_used(user_id: int) -> bool:
     """چک می‌کند آیا کاربر قبلاً از پلن هدیه استفاده کرده است."""
@@ -74,7 +74,7 @@ async def activate_gift_plan(client: Client, message: Message) -> None:
     # تنظیم state اولیه
     set_user_state(user_id, {'step': 'waiting_phone'})
     
-    # کیبورد با دکمه Share Contact (بدون Inline)
+    # کیبورد با دکمه Share Contact
     markup = ReplyKeyboardMarkup(
         [[KeyboardButton("📱 Share Contact", request_contact=True)]],
         resize_keyboard=True,
@@ -91,7 +91,7 @@ async def activate_gift_plan(client: Client, message: Message) -> None:
 @Client.on_message(filters.contact & filters.private & PyroFilters.subscription())
 @RateLimiter.hybrid_limiter(func_count=1)
 async def handle_phone_share(client: Client, message: Message) -> None:
-    """دریافت شماره تلفن از contact share."""
+    """دریافت شماره تلفن و فعال‌سازی مستقیم پلن."""
     print(f"DEBUG: Contact message received from user {message.from_user.id}")
     user_id = message.from_user.id
     state = get_user_state(user_id)
@@ -106,57 +106,34 @@ async def handle_phone_share(client: Client, message: Message) -> None:
 
     phone_number = message.contact.phone_number
     print(f"DEBUG: Phone received: {phone_number}")
-    # تنظیم state برای نام
-    set_user_state(user_id, {'step': 'waiting_name', 'phone': phone_number})
     
-    # پاک کردن کیبورد
+    # ارسال استیکر loading
+    loading_sticker_message = await message.reply_sticker("CAACAgIAAxkBAALmzGXSSt3ppnOsSl_spnAP8wHC26jpAAJEGQACCOHZSVKp6_XqghKoHgQ")
+    
+    # صبر 4 ثانیه
+    await asyncio.sleep(4)
+    
+    # پاک کردن state و کیبورد
+    clear_user_state(user_id)
     remove_markup = ReplyKeyboardMarkup([], resize_keyboard=True)
     
-    await message.reply_text(
-        "✅ شماره تلفن دریافت شد.\n\n👤 حالا نام کامل خود را ارسال کنید.",
-        reply_markup=remove_markup
-    )
-    print(f"DEBUG: Waiting for name from user {user_id}")
-
-@Client.on_message(filters.text & filters.private & PyroFilters.subscription())
-@RateLimiter.hybrid_limiter(func_count=1)
-async def handle_name_input(client: Client, message: Message) -> None:
-    """دریافت نام و فعال‌سازی پلن."""
-    print(f"DEBUG: Text message received from user {message.from_user.id}: {message.text}")
-    user_id = message.from_user.id
-    state = get_user_state(user_id)
-
-    if state.get('step') != 'waiting_name':
-        print(f"DEBUG: Ignoring text - wrong state: {state.get('step')}")
-        return  # اگر state مناسب نیست، نادیده بگیر
-
-    full_name = message.text.strip()
-    phone_number = state.get('phone', 'نامشخص')
-    print(f"DEBUG: Name received: {full_name}, Phone: {phone_number}")
-
-    if not full_name:
-        await message.reply_text("❌ نام نمی‌تواند خالی باشد. لطفاً نام کامل خود را ارسال کنید.")
-        return
-
-    # فعال‌سازی پلن
+    # فعال‌سازی پلن مستقیم (بدون درخواست نام)
     expiry_date = datetime.date.today() + datetime.timedelta(days=GIFT_PLAN_DURATION)
     try:
         await db.set_user_plan(user_id, GIFT_PLAN_NAME, expiry_date.isoformat())
         print(f"DEBUG: Plan set for user {user_id}")
     except Exception as e:
         print(f"DEBUG: Error setting plan: {e}")
-        await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}")
-        clear_user_state(user_id)
+        await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}", reply_markup=remove_markup)
         return
 
     try:
         daily_limit = DAILY_LINK_LIMITS.get(GIFT_PLAN_NAME, 5)  # فرض بر 5 کلیک روزانه
-        # پاک کردن کیبورد
-        remove_markup = ReplyKeyboardMarkup([], resize_keyboard=True)
+        user_name = message.from_user.first_name or "نامشخص"  # استفاده از first_name
         
         await message.reply_text(
             f"🎁 پلن هدیه 7 روزه با موفقیت برای شما فعال شد!\n\n"
-            f"👤 نام: {full_name}\n"
+            f"👤 نام: {user_name}\n"
             f"📱 شماره: {phone_number}\n"
             f"⏳ این پلن تا تاریخ {expiry_date.strftime('%Y/%m/%d')} معتبر است.\n"
             f"💾 محدودیت کلیک روزانه این پلن: {daily_limit} کلیک\n\n"
@@ -164,36 +141,30 @@ async def handle_name_input(client: Client, message: Message) -> None:
             reply_markup=remove_markup
         )
 
-        user_mention = f"[{message.from_user.first_name}](tg://user?id={user_id})"
+        # لاگ با فرمت جدید
         await client.send_message(
             LOG_CHANNEL,
             f"🎉 پلن هدیه فعال شد!\n\n"
-            f"👤 کاربر: {user_mention}\n"
-            f"🆔 آیدی: `{user_id}`\n"
-            f"👤 نام کامل: {full_name}\n"
-            f"📱 شماره تلفن: `{phone_number}`\n"
-            f"نوع پلن: {GIFT_PLAN_NAME}\n"
+            f"👤 نام کاربر: {user_name}\n"
+            f"🆔 آیدی عددی: {user_id}\n"
+            f"📲 شماره کاربر: {phone_number}\n"
+            f"🪅 نوع پلن: {GIFT_PLAN_NAME}\n"
             f"🗓️ تاریخ انقضا: {expiry_date.strftime('%Y/%m/%d')}"
         )
         print(f"DEBUG: Success message and log sent for user {user_id}")
 
-        # پاک کردن state
-        clear_user_state(user_id)
-
     except FloodWait as e:
         print(f"Sleeping for {e.value}s")
         await asyncio.sleep(e.value)
-        await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.")
-        clear_user_state(user_id)
+        await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.", reply_markup=remove_markup)
     except Exception as e:
         print(f"DEBUG: Error in final steps: {e}")
-        await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}")
-        clear_user_state(user_id)  # در صورت خطا هم state را پاک کن
+        await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}", reply_markup=remove_markup)
 
 
 HelpCmd.set_help(
     command="gift",
-    description="فعال‌سازی پلن هدیه 7 روزه (فقط برای کاربران رایگان، با تأیید شماره و نام).",
+    description="فعال‌سازی پلن هدیه 7 روزه (فقط برای کاربران رایگان، با تأیید شماره).",
     allow_global=True,
     allow_non_admin=True,
 )
