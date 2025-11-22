@@ -6,7 +6,10 @@ from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
+from bot.database import MongoDB
 from bot.utilities.pyrotools import HelpCmd
+
+database = MongoDB()
 
 # ذخیره داده‌ها
 user_lucky_numbers = {}
@@ -85,6 +88,24 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
         await msg.edit_reply_markup(reply_markup=InlineKeyboardMarkup(new_keyboard))
         user_attempts[user_id] = 0
         user_failed[user_id] = False  # چون برده
+
+        # جایزه: ارسال کد VIP
+        collection = database.db["VIPCodes"]
+        unused_codes = await collection.find({"used": False}).to_list(length=None)
+        if unused_codes:
+            # انتخاب random
+            vip_code = random.choice(unused_codes)
+            code_str = vip_code["code"]
+            # حذف یا mark used
+            await collection.update_one(
+                {"_id": vip_code["_id"]},
+                {"$set": {"used": True, "used_by": user_id, "used_at": time.strftime("%Y-%m-%d %H:%M:%S")}}
+            )
+            await callback_query.message.reply(
+                f"تبریک شما برنده شدید! 🪅\nکد جایزه: `{code_str}`\n\n(این کد رو با /vip استفاده کن!)"
+            )
+        else:
+            await callback_query.message.reply("تبریک برنده شدی! 🪅 (متأسفانه کد جایزه موجود نیست. بعداً امتحان کن.)")
         return
 
     # اگر اشتباه زده
