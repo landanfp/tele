@@ -18,7 +18,7 @@ user_attempts = {}
 user_failed = {}
 user_last_use = {}  # برای cooldown: {user_id: timestamp}
 
-COOLDOWN_SECONDS = 43200  # 2 دقیقه (بعداً به 86400 برای یک روز تغییر بده)
+COOLDOWN_SECONDS = 43200  # 12 ساعت
 VIP_PLAN_NAME = "vip_15days"  # از vip_code.py
 LOG_CHANNEL = config.BACKUP_CHANNEL  # کانال لاگ
 
@@ -33,19 +33,19 @@ async def gifi_command(client: Client, message):
         if time_since_last < COOLDOWN_SECONDS:
             remaining = COOLDOWN_SECONDS - time_since_last
             hours = int(remaining // 3600)
-minutes = int((remaining % 3600) // 60)
-seconds = int(remaining % 60)
-await message.reply(
-    f"⏰ صبر کن! می‌تونی هر 12 ساعت یکبار بازی کنی.\n"
-    f"زمان باقی‌مانده: {hours} ساعت و {minutes} دقیقه و {seconds} ثانیه."
-)
+            minutes = int((remaining % 3600) // 60)
+            seconds = int(remaining % 60)
+            await message.reply(
+                f"⏰ صبر کن! می‌تونی هر 12 ساعت یکبار بازی کنی.\n"
+                f"زمان باقی‌مانده: {hours} ساعت و {minutes} دقیقه و {seconds} ثانیه."
+            )
             return
 
     lucky_number = random.randint(1, 10)
 
     # ذخیره اطلاعات کاربر
     user_lucky_numbers[user_id] = lucky_number
-    user_attempts[user_id] = 1  # تغییر به 5 تلاش
+    user_attempts[user_id] = 1  # ۱ تلاش
     user_failed[user_id] = True
     user_last_use[user_id] = current_time  # آپدیت cooldown
 
@@ -57,7 +57,7 @@ await message.reply(
     keyboard = [buttons[i:i + 3] for i in range(0, 10, 3)]
 
     await message.reply(
-        "یکی از دکمه‌ها جایزه داره، پیداش کن! (1 تلاش داری)",
+        "یکی از دکمه‌ها جایزه داره، پیداش کن! (۱ تلاش داری)",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -157,7 +157,7 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
 
     # اگر تلاش تموم شد و نبرده بود
     if user_attempts[user_id] == 0 and user_failed.get(user_id, True):
-        await callback_query.message.reply("۵ بار تلاش کردی و موفق نشدی! پاسخ درست تا ۵ ثانیه دیگه نمایش داده می‌شه...")
+        await callback_query.message.reply("۱ بار تلاش کردی و موفق نشدی! پاسخ درست تا ۵ ثانیه دیگه نمایش داده می‌شه...")
         await asyncio.sleep(5)
 
         # نمایش نهایی دکمه‌ها
@@ -175,7 +175,7 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
 
 HelpCmd.set_help(
     command="gifi",
-    description="بازی حدس جایزه: یکی از دکمه‌ها جایزه داره، پیداش کن! (1 تلاش داری، هر ۲ دقیقه یکبار)",
+    description="بازی حدس جایزه: یکی از دکمه‌ها جایزه داره، پیداش کن! (۱ تلاش داری، هر ۱۲ ساعت یکبار)",
     allow_global=True,
     allow_non_admin=True,
 )
