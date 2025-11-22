@@ -147,19 +147,19 @@ class MongoDB(Moderation, Listener):
         return (link_count, users_count)
 
     async def cleanup_users(self, unsuccessful_ids: list, unsuccessful_ids_codex: list) -> None:
-    """
-    Cleans up users from the database based on their IDs.
+        """
+        Cleans up users from the database based on their IDs.
 
-    Parameters:
-        unsuccessful_ids (list): List of user IDs to delete from the database.
-        unsuccessful_ids_codex (list): List of user IDs to delete from the CodeXbotz database.
-    """
-    if unsuccessful_ids:
-        # فیکس: فقط کاربران non-banned رو حذف کن (banned: {$ne: True})
-        await self.db["Users"].delete_many({
-            "_id": {"$in": unsuccessful_ids},
-            "banned": {"$ne": True}  # اگر banned=True باشه، حذف نکن
-        })
+        Parameters:
+            unsuccessful_ids (list): List of user IDs to delete from the database.
+            unsuccessful_ids_codex (list): List of user IDs to delete from the CodeXbotz database.
+        """
+        if unsuccessful_ids:
+            # فیکس: فقط کاربران non-banned رو حذف کن (banned: {$ne: True})
+            await self.db["Users"].delete_many({
+                "_id": {"$in": unsuccessful_ids},
+                "banned": {"$ne": True}  # اگر banned=True باشه، حذف نکن
+            })
 
-    if unsuccessful_ids_codex:
-        await self.db["users"].delete_many({"_id": {"$in": unsuccessful_ids_codex}})
+        if unsuccessful_ids_codex:
+            await self.db["users"].delete_many({"_id": {"$in": unsuccessful_ids_codex}})
