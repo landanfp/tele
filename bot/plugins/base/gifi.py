@@ -74,6 +74,20 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
     msg = callback_query.message
     keyboard = msg.reply_markup.inline_keyboard
 
+    # چک اگر این دکمه قبلاً انتخاب شده (پوچ)
+    is_already_chosen = False
+    for row in keyboard:
+        for btn in row:
+            if btn.callback_data == f"gifi:{chosen}" and btn.text.endswith(". پوچ"):
+                is_already_chosen = True
+                break
+        if is_already_chosen:
+            break
+
+    if is_already_chosen:
+        await callback_query.answer("این عدد قبلا انتخاب شده است!", show_alert=True)
+        return
+
     if chosen == lucky:
         await callback_query.answer("تبریک! شما برنده شدی!", show_alert=True)
 
