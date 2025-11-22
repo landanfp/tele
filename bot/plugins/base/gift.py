@@ -108,14 +108,17 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     print(f"DEBUG: Phone received: {phone_number}")
     
     # ارسال استیکر loading
+    print(f"DEBUG: About to send loading sticker for user {user_id}")
     loading_sticker_message = await message.reply_sticker("CAACAgIAAxkBAALmzGXSSt3ppnOsSl_spnAP8wHC26jpAAJEGQACCOHZSVKp6_XqghKoHgQ")
     print(f"DEBUG: Loading sticker sent for user {user_id}")
     
     # صبر 4 ثانیه
+    print(f"DEBUG: Starting sleep for user {user_id}")
     await asyncio.sleep(4)
     print(f"DEBUG: Sleep finished for user {user_id}")
     
     # حذف استیکر loading
+    print(f"DEBUG: About to delete sticker for user {user_id}")
     try:
         await loading_sticker_message.delete()
         print(f"DEBUG: Sticker deleted for user {user_id}")
@@ -128,12 +131,17 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     
     # فعال‌سازی پلن مستقیم (بدون درخواست نام)
     expiry_date = datetime.date.today() + datetime.timedelta(days=GIFT_PLAN_DURATION)
+    print(f"DEBUG: About to set plan for user {user_id}")
     try:
         await db.set_user_plan(user_id, GIFT_PLAN_NAME, expiry_date.isoformat())
-        print(f"DEBUG: Plan set for user {user_id}")
+        print(f"DEBUG: Plan set successfully for user {user_id}")
     except Exception as e:
         print(f"DEBUG: Error setting plan: {e}")
-        await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}", reply_markup=remove_markup)
+        try:
+            await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}", reply_markup=remove_markup)
+            print(f"DEBUG: Error message sent for user {user_id}")
+        except Exception as reply_e:
+            print(f"DEBUG: Error sending error message: {reply_e}")
         return
 
     try:
@@ -168,10 +176,18 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     except FloodWait as e:
         print(f"DEBUG: FloodWait caught: {e.value}s")
         await asyncio.sleep(e.value)
-        await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.", reply_markup=remove_markup)
+        try:
+            await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.", reply_markup=remove_markup)
+            print(f"DEBUG: Flood message sent for user {user_id}")
+        except Exception as flood_reply_e:
+            print(f"DEBUG: Error sending flood message: {flood_reply_e}")
     except Exception as e:
         print(f"DEBUG: Error in final steps: {e}")
-        await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}", reply_markup=remove_markup)
+        try:
+            await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}", reply_markup=remove_markup)
+            print(f"DEBUG: Final error message sent for user {user_id}")
+        except Exception as final_reply_e:
+            print(f"DEBUG: Error sending final error message: {final_reply_e}")
 
 
 HelpCmd.set_help(
