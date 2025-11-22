@@ -125,9 +125,8 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     except Exception as delete_e:
         print(f"DEBUG: Error deleting sticker: {delete_e}")
     
-    # پاک کردن state و کیبورد
+    # پاک کردن state
     clear_user_state(user_id)
-    remove_markup = ReplyKeyboardMarkup([], resize_keyboard=True)
     
     # فعال‌سازی پلن مستقیم (بدون درخواست نام)
     expiry_date = datetime.date.today() + datetime.timedelta(days=GIFT_PLAN_DURATION)
@@ -138,7 +137,7 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     except Exception as e:
         print(f"DEBUG: Error setting plan: {e}")
         try:
-            await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}", reply_markup=remove_markup)
+            await message.reply_text(f"❌ خطا در فعال‌سازی پلن: {e}")
             print(f"DEBUG: Error message sent for user {user_id}")
         except Exception as reply_e:
             print(f"DEBUG: Error sending error message: {reply_e}")
@@ -149,14 +148,14 @@ async def handle_phone_share(client: Client, message: Message) -> None:
         user_name = message.from_user.first_name or "نامشخص"  # استفاده از first_name
         
         print(f"DEBUG: About to send success message for user {user_id}")
+        # بدون reply_markup – تلگرام کیبورد رو خودکار پاک می‌کنه چون one_time_keyboard=True بود
         await message.reply_text(
             f"🎁 پلن هدیه 7 روزه با موفقیت برای شما فعال شد!\n\n"
             f"👤 نام: {user_name}\n"
             f"📱 شماره: {phone_number}\n"
             f"⏳ این پلن تا تاریخ {expiry_date.strftime('%Y/%m/%d')} معتبر است.\n"
             f"💾 محدودیت کلیک روزانه این پلن: {daily_limit} کلیک\n\n"
-            f"برای بررسی وضعیت پلن خود از دستور /myplan استفاده کنید.",
-            reply_markup=remove_markup
+            f"برای بررسی وضعیت پلن خود از دستور /myplan استفاده کنید."
         )
         print(f"DEBUG: Success message sent for user {user_id}")
 
@@ -177,14 +176,14 @@ async def handle_phone_share(client: Client, message: Message) -> None:
         print(f"DEBUG: FloodWait caught: {e.value}s")
         await asyncio.sleep(e.value)
         try:
-            await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.", reply_markup=remove_markup)
+            await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.")
             print(f"DEBUG: Flood message sent for user {user_id}")
         except Exception as flood_reply_e:
             print(f"DEBUG: Error sending flood message: {flood_reply_e}")
     except Exception as e:
         print(f"DEBUG: Error in final steps: {e}")
         try:
-            await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}", reply_markup=remove_markup)
+            await message.reply_text(f"❌ خطایی در فعال سازی پلن هدیه رخ داد: {e}")
             print(f"DEBUG: Final error message sent for user {user_id}")
         except Exception as final_reply_e:
             print(f"DEBUG: Error sending final error message: {final_reply_e}")
