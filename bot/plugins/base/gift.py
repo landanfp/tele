@@ -108,10 +108,19 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     print(f"DEBUG: Phone received: {phone_number}")
     
     # ارسال استیکر loading
-    loading_sticker_message = await message.reply_sticker("CAACAgIAAxkBAALmzGXSSt3ppnOsSl_spnAP8wHC26jpAAJEGQACCOHZSVKp6_XqghKoHgQ")
+    loading_sticker_message = await message.reply_sticker("CAACAgUAAxkBAAEH1HRkX9q3LkNg8p8cKwAAAVWlFq5iO54AApMBAAJZVbFKjN6H2mu1tEYeBA")
+    print(f"DEBUG: Loading sticker sent for user {user_id}")
     
     # صبر 4 ثانیه
     await asyncio.sleep(4)
+    print(f"DEBUG: Sleep finished for user {user_id}")
+    
+    # حذف استیکر loading
+    try:
+        await loading_sticker_message.delete()
+        print(f"DEBUG: Sticker deleted for user {user_id}")
+    except Exception as delete_e:
+        print(f"DEBUG: Error deleting sticker: {delete_e}")
     
     # پاک کردن state و کیبورد
     clear_user_state(user_id)
@@ -131,6 +140,7 @@ async def handle_phone_share(client: Client, message: Message) -> None:
         daily_limit = DAILY_LINK_LIMITS.get(GIFT_PLAN_NAME, 5)  # فرض بر 5 کلیک روزانه
         user_name = message.from_user.first_name or "نامشخص"  # استفاده از first_name
         
+        print(f"DEBUG: About to send success message for user {user_id}")
         await message.reply_text(
             f"🎁 پلن هدیه 7 روزه با موفقیت برای شما فعال شد!\n\n"
             f"👤 نام: {user_name}\n"
@@ -140,8 +150,10 @@ async def handle_phone_share(client: Client, message: Message) -> None:
             f"برای بررسی وضعیت پلن خود از دستور /myplan استفاده کنید.",
             reply_markup=remove_markup
         )
+        print(f"DEBUG: Success message sent for user {user_id}")
 
         # لاگ با فرمت جدید
+        print(f"DEBUG: About to send log for user {user_id}")
         await client.send_message(
             LOG_CHANNEL,
             f"🎉 پلن هدیه فعال شد!\n\n"
@@ -151,10 +163,10 @@ async def handle_phone_share(client: Client, message: Message) -> None:
             f"🪅 نوع پلن: {GIFT_PLAN_NAME}\n"
             f"🗓️ تاریخ انقضا: {expiry_date.strftime('%Y/%m/%d')}"
         )
-        print(f"DEBUG: Success message and log sent for user {user_id}")
+        print(f"DEBUG: Log sent for user {user_id}")
 
     except FloodWait as e:
-        print(f"Sleeping for {e.value}s")
+        print(f"DEBUG: FloodWait caught: {e.value}s")
         await asyncio.sleep(e.value)
         await message.reply_text("⚠️ به دلیل شلوغی سرور، فعال سازی با تاخیر انجام شد. لطفاً مجدداً بررسی کنید.", reply_markup=remove_markup)
     except Exception as e:
