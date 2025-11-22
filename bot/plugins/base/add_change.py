@@ -6,7 +6,9 @@ from pyrogram.types import Message
 from bot.database import MongoDB
 from bot.utilities.pyrofilters import PyroFilters
 from bot.utilities.pyrotools import HelpCmd
+import logging
 
+logger = logging.getLogger(__name__)
 database = MongoDB()
 
 # لیست اولیه کدهای VIP (فقط یکبار اجرا کن یا دستی insert کن)
@@ -42,28 +44,37 @@ async def add_change_handler(client: Client, message: Message):
 
     if result.acknowledged:
         await message.reply(f"✅ کد VIP `{new_code}` با موفقیت به لیست اضافه شد.")
+        logger.info(f"Added VIP code: {new_code} by admin {message.from_user.id}")
     else:
         await message.reply("❌ خطا در اضافه کردن کد. دوباره امتحان کنید.")
+        logger.error(f"Failed to add VIP code: {new_code}")
 
 @Client.on_message(filters.private & PyroFilters.admin() & filters.command("change_list"))
 async def change_list_handler(client: Client, message: Message):
-    collection = database.db["VIPCodes"]
-    codes = await collection.find({}).to_list(length=None)
+    logger.info(f"change_list called by user {message.from_user.id}")
+    try:
+        collection = database.db["VIPCodes"]
+        codes = await collection.find({}).to_list(length=None)
 
-    if not codes:
-        await message.reply("📝 لیست کدهای VIP خالی است.")
-        return
+        if not codes:
+            await message.reply("📝 لیست کدهای VIP خالی است.\nابتدا با /add_change کدها را اضافه کنید.")
+            logger.warning("VIPCodes collection is empty")
+            return
 
-    # فرمت جدول Markdown
-    table = "| کد VIP | وضعیت | استفاده‌شده توسط | تاریخ استفاده |\n|--------|--------|-------------------|---------------|\n"
-    for code_doc in codes:
-        code = code_doc.get("code", "N/A")
-        used = "✅ استفاده شده" if code_doc.get("used", False) else "❌ موجود"
-        used_by = str(code_doc.get("used_by", "هیچکس")) if code_doc.get("used", False) else "-"
-        used_at = code_doc.get("used_at", "-")
-        table += f"| `{code}` | {used} | {used_by} | {used_at} |\n"
+        # فرمت جدول Markdown ساده‌تر
+        text = "📋 **لیست کدهای VIP:**\n\n"
+        for code_doc in codes:
+            code = code_doc.get("code", "N/A")
+            used = "✅ استفاده شده" if code_doc.get("used", False) else "❌ موجود"
+            used_by = str(code_doc.get("used_by", "هیچکس")) if code_doc.get("used", False) else "-"
+            used_at = code_doc.get("used_at", "-")
+            text += f"• `{code}` - {used} (توسط: {used_by} در {used_at})\n"
 
-    await message.reply(f"📋 **لیست کدهای VIP:**\n\n{table}", parse_mode="Markdown")
+        await message.reply(text, parse_mode="Markdown")
+        logger.info(f"change_list sent to {message.from_user.id}, {len(codes)} codes found")
+    except Exception as e:
+        await message.reply("❌ خطا در نمایش لیست. لاگ‌ها را چک کنید.")
+        logger.error(f"Error in change_list: {e}")
 
 HelpCmd.set_help(
     command="add_change",
