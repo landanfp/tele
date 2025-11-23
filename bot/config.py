@@ -69,7 +69,8 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    ROOT_ADMINS_ID: list[int]
+    #ROOT_ADMINS_ID: list[int]
+    ROOT_ADMINS_ID: list[int] = [int(x) for x in os.environ.get("ROOT_ADMINS_ID", "").split() if x.strip()]
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
     FORCE_SUB_CHANNELS: list[int] = []
