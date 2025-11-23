@@ -155,11 +155,7 @@ class MongoDB(Moderation, Listener):
             unsuccessful_ids_codex (list): List of user IDs to delete from the CodeXbotz database.
         """
         if unsuccessful_ids:
-            # فیکس: فقط کاربران non-banned رو حذف کن (banned: {$ne: True})
-            await self.db["Users"].delete_many({
-                "_id": {"$in": unsuccessful_ids},
-                "banned": {"$ne": True}  # اگر banned=True باشه، حذف نکن
-            })
+            await self.db["Users"].delete_many({"_id": {"$in": unsuccessful_ids}})
 
         if unsuccessful_ids_codex:
             await self.db["users"].delete_many({"_id": {"$in": unsuccessful_ids_codex}})
