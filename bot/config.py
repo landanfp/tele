@@ -6,6 +6,7 @@ Config: Bot Config
 # ruff: noqa: ARG003
 import logging
 import sys
+import os
 from pathlib import Path
 from typing import Annotated
 
