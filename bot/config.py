@@ -73,14 +73,13 @@ class Config(BaseSettings):
     #ROOT_ADMINS_ID: list[int]
     from pydantic_settings import BaseSettings
     import os
-
-class Config(BaseSettings):
-    OWNER_ID: tuple[int] = tuple(
-        int(x) for x in os.environ.get("OWNER_ID", "").strip("[]").replace(",", " ").split()
-        if x.strip()
-    )
-
-config = Config()
+    
+    class Config(BaseSettings):
+        OWNER_ID: tuple[int] = tuple(
+            int(x) for x in os.environ.get("OWNER_ID", "").strip("[]").replace(",", " ").split()
+            if x.strip()
+        )
+        config = Config()
 
 
     PRIVATE_REQUEST: bool = False
