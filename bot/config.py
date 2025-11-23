@@ -72,13 +72,15 @@ class Config(BaseSettings):
     BACKUP_CHANNEL: int
     #ROOT_ADMINS_ID: list[int]
     from pydantic_settings import BaseSettings
-    from typing import List
+    import os
 
 class Config(BaseSettings):
-    ROOT_ADMINS_ID: List[int] = []
+    OWNER_ID: tuple[int] = tuple(
+        int(x) for x in os.environ.get("OWNER_ID", "").strip("[]").replace(",", " ").split()
+        if x.strip()
+    )
 
-    class Config:
-        env_file = ".env"
+config = Config()
 
 
     PRIVATE_REQUEST: bool = False
