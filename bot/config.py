@@ -71,11 +71,14 @@ class Config(BaseSettings):
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
     #ROOT_ADMINS_ID: list[int]
-    raw = os.environ.get("ROOT_ADMINS_ID", "[]")
-    try:
-        ROOT_ADMINS_ID: list[int] = list(map(int, json.loads(raw)))
-    except Exception:
-        ROOT_ADMINS_ID: list[int] = []
+    from pydantic_settings import BaseSettings
+    from typing import List
+
+class Config(BaseSettings):
+    ROOT_ADMINS_ID: List[int] = []
+
+    class Config:
+        env_file = ".env"
 
 
     PRIVATE_REQUEST: bool = False
