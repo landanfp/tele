@@ -71,8 +71,7 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    #ROOT_ADMINS_ID: list[int]  # تغییر: به list برای dynamic بودن
-    ROOT_ADMINS_ID = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # تغییر: list به جای tuple
+    ROOT_ADMINS_ID: list[int] = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # فیکس: type annotation اضافه شد
 
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
@@ -86,7 +85,7 @@ class Config(BaseSettings):
         env_file=f"{BASE_PATH}/.env",
     )
 
-    # تغییر: اضافه کردن متد sync برای admins
+    # فیکس: متد sync admins
     def sync_admins(self, new_admins: list[int]) -> None:
         """Sync ROOT_ADMINS_ID with updated admins."""
         self.ROOT_ADMINS_ID = new_admins
