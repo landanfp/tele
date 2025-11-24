@@ -71,15 +71,8 @@ class Config(BaseSettings):
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
     #ROOT_ADMINS_ID: list[int]
-    from pydantic_settings import BaseSettings
-    import os
-    
-    class Config(BaseSettings):
-        OWNER_ID: tuple[int] = tuple(
-            int(x) for x in os.environ.get("OWNER_ID", "").strip("[]").replace(",", " ").split()
-            if x.strip()
-        )
-        config = Config()
+    ROOT_ADMINS_ID = tuple(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())
+
 
 
     PRIVATE_REQUEST: bool = False
