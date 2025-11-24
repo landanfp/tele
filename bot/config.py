@@ -74,7 +74,7 @@ class Config(BaseSettings):
     ROOT_ADMINS_ID: list[int] = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # فیکس: type annotation اضافه شد
 
     PRIVATE_REQUEST: bool = False
-    PROTECT_CONTENT: bool = True
+    PROTECT_CONTENT: bool = False
     FORCE_SUB_CHANNELS: list[int] = []
     AUTO_GENERATE_LINK: bool = True
 
