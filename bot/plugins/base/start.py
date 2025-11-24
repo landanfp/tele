@@ -12,7 +12,7 @@ from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, 
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
 from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
-from bot.plugins.base.set import ADMIN  # تغییر: import ADMIN global
+# from bot.plugins.base.set import ADMIN  # فیکس: حذف import ADMIN برای جلوگیری از cyclic import
 
 database = MongoDB()
 
@@ -113,7 +113,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     is_subscribed = True
     
     # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
-    if user_id not in ADMIN:  # تغییر: ADMIN به جای config.ROOT_ADMINS_ID
+    if user_id not in config.ROOT_ADMINS_ID:  # فیکس: استفاده از config.ROOT_ADMINS_ID به جای ADMIN
         if await database.is_user_banned(user_id):
              await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
              return
