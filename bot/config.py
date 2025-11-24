@@ -1,3 +1,4 @@
+# bot/config.py file : 
 """General configuration.
 
 Config: Bot Config
@@ -70,10 +71,8 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
-    #ROOT_ADMINS_ID: list[int]
-    ROOT_ADMINS_ID = tuple(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())
-
-
+    #ROOT_ADMINS_ID: list[int]  # تغییر: به list برای dynamic بودن
+    ROOT_ADMINS_ID = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # تغییر: list به جای tuple
 
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True
@@ -86,6 +85,11 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=f"{BASE_PATH}/.env",
     )
+
+    # تغییر: اضافه کردن متد sync برای admins
+    def sync_admins(self, new_admins: list[int]) -> None:
+        """Sync ROOT_ADMINS_ID with updated admins."""
+        self.ROOT_ADMINS_ID = new_admins
 
     @field_validator("ROOT_ADMINS_ID", "FORCE_SUB_CHANNELS", mode="before")
     @classmethod
