@@ -13,10 +13,10 @@ from rich.traceback import install
 
 from bot.config import config
 from bot.options import options
+from bot.database import MongoDB  # فیکس: import مستقیم database برای لود admins
 from bot.utilities.helpers import NoInviteLinkError, PyroHelper, RateLimiter
 from bot.utilities.http_server import HTTPServer
 from bot.utilities.schedule_manager import schedule_manager
-from bot.plugins.base.set import update_admin_list, ADMIN  # فیکس: import ADMIN هم اضافه شد
 
 install(show_locals=True)
 
@@ -37,6 +37,20 @@ except ImportError:
 
 background_tasks = set()
 
+# فیکس: تعریف ADMIN global در main (برای جلوگیری از cyclic import)
+ADMIN = list(config.ROOT_ADMINS_ID)  # اولیه از config
+
+async def load_admins_from_db():  # فیکس: تابع محلی async برای لود admins
+    """Load admins from DB and update global ADMIN."""
+    global ADMIN
+    database = MongoDB()
+    admins_doc = await database.db["BotSettings"].find_one({"_id": "Admins"}, {"admins": 1})
+    if admins_doc and "admins" in admins_doc:
+        ADMIN = list(admins_doc["admins"])
+    else:
+        ADMIN = list(config.ROOT_ADMINS_ID)  # fallback به config
+    logging.info(f"Loaded ADMIN list from DB: {ADMIN}")
+    config.sync_admins(ADMIN)  # sync با config
 
 async def main() -> None:
     bot_client = Client(
@@ -51,8 +65,7 @@ async def main() -> None:
 
     # Load database settings
     await options.load_settings()
-    await update_admin_list()  # لود ADMIN از DB
-    config.sync_admins(ADMIN)  # فیکس: استفاده از متد sync به جای direct assign
+    await load_admins_from_db()  # فیکس: لود admins محلی بدون import از set
 
     await bot_client.start()
     # Bot setup
