@@ -1,3 +1,4 @@
+# bot/main.py file :
 # farshidband
 import asyncio
 import logging
@@ -15,6 +16,7 @@ from bot.options import options
 from bot.utilities.helpers import NoInviteLinkError, PyroHelper, RateLimiter
 from bot.utilities.http_server import HTTPServer
 from bot.utilities.schedule_manager import schedule_manager
+from bot.plugins.base.set import update_admin_list  # تغییر: import برای لود ADMIN
 
 install(show_locals=True)
 
@@ -49,6 +51,9 @@ async def main() -> None:
 
     # Load database settings
     await options.load_settings()
+    await update_admin_list()  # تغییر: لود ADMIN از DB
+    config.ROOT_ADMINS_ID = ADMIN  # تغییر: sync با global ADMIN (از set.py)
+
     await bot_client.start()
     # Bot setup
 
