@@ -14,6 +14,9 @@ from bot.utilities.pyrotools import HelpCmd
 logger = logging.getLogger(__name__)
 database = MongoDB()
 
+# Capture initial owners at startup (only original admins from config/env)
+DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)
+
 # settings_panel_message_ids and user_awaiting_admin_input
 settings_panel_message_ids = {}
 user_awaiting_admin_input = {}
@@ -81,8 +84,7 @@ async def admin_id_callback(client: Client, query: CallbackQuery):
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    initial_owners = set(config.ROOT_ADMINS_ID.copy())
-    if admin_id in initial_owners:
+    if admin_id in DEFAULT_OWNERS:
         await query.answer("⚠️ نمی‌توانید مالک را حذف کنید!", show_alert=True)
         return
 
@@ -120,8 +122,7 @@ async def remove_admin_callback(client: Client, query: CallbackQuery):
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    initial_owners = set(config.ROOT_ADMINS_ID.copy())
-    if admin_id in initial_owners:
+    if admin_id in DEFAULT_OWNERS:
         await query.answer("⚠️ نمی‌توانید مالک را حذف کنید!", show_alert=True)
         return
 
