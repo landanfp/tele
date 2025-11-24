@@ -1,4 +1,3 @@
-
 # bot/plugins/base/set.py file :
 import logging
 from pyrogram import filters
@@ -19,27 +18,6 @@ database = MongoDB()
 ADMIN = list(config.ROOT_ADMINS_ID)
 DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)  # Capture initial owners at startup
 logger.info(f"Initialized DEFAULT_OWNERS: {DEFAULT_OWNERS}")
-
-# Load admins from DB on startup (if any overrides)
-async def update_admin_list():
-    """Update the global ADMIN list from database."""
-    global ADMIN
-    admins_doc = await database.db["BotSettings"].find_one({"_id": "Admins"}, {"admins": 1})
-    if admins_doc and "admins" in admins_doc:
-        ADMIN = list(admins_doc["admins"])
-    else:
-        ADMIN = list(config.ROOT_ADMINS_ID)
-    logger.info(f"Updated ADMIN list: {ADMIN}")
-
-# Call initially (but since async, call in main or here if sync)
-# For now, assume called in main.py after db load
-
-# Custom filter using global ADMIN (fallback to pyrofilters)
-def is_admin(_, __, update):
-    user_id = update.from_user.id if hasattr(update, 'from_user') else update.from_user.id
-    return user_id in ADMIN
-
-admin_filter = filters.create(is_admin)
 
 # Store the message ID of the settings panel to update it
 # {chat_id: message_id}
@@ -178,6 +156,7 @@ async def remove_admin_callback(client: Client, query: CallbackQuery):
         {"$set": {"admins": ADMIN}},
         upsert=True
     )
+    config.sync_admins(ADMIN)  # فیکس: sync با config برای فیلترها
     logger.info(f"Admin ID {admin_id} removed by user {user_id}. Updated ADMIN list: {ADMIN}")
 
     # Send notification to the removed admin
@@ -282,6 +261,7 @@ async def receive_input_value(client: Client, message: Message):
             {"$set": {"admins": ADMIN}},
             upsert=True
         )
+        config.sync_admins(ADMIN)  # فیکس: sync با config برای فیلترها
         logger.info(f"New admin ID {new_admin_id} added by admin {user_id}. Updated ADMIN list: {ADMIN}")
 
         # Send notification to the new admin
