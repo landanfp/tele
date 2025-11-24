@@ -1,3 +1,4 @@
+# bot/plugins/base/start.py file :
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.enums import ChatMemberStatus
@@ -11,6 +12,7 @@ from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, 
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
 from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
+from bot.plugins.base.set import ADMIN  # تغییر: import ADMIN global
 
 database = MongoDB()
 
@@ -111,34 +113,35 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     is_subscribed = True
     
     # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
-    if user_id not in config.ROOT_ADMINS_ID and config.FORCE_SUB_CHANNELS:
+    if user_id not in ADMIN:  # تغییر: ADMIN به جای config.ROOT_ADMINS_ID
         if await database.is_user_banned(user_id):
              await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
              return
 
-        try:
-            joined_request_channel = await database.user_requested_channels(user_id)
+        if config.FORCE_SUB_CHANNELS:
+            try:
+                joined_request_channel = await database.user_requested_channels(user_id)
 
-            for channel_info in config.channels_n_invite.values():
-                channel_is_private = channel_info["is_private"]
-                channel_id = channel_info["channel_id"]
+                for channel_info in config.channels_n_invite.values():
+                    channel_is_private = channel_info["is_private"]
+                    channel_id = channel_info["channel_id"]
 
-                if channel_is_private and channel_id not in joined_request_channel:
-                    is_subscribed = False
-                    break
-
-                if not channel_is_private:
-                    try:
-                        member = await client.get_chat_member(chat_id=channel_id, user_id=user_id)
-                        if member.status not in status:
-                            is_subscribed = False
-                            break
-                    except UserNotParticipant:
+                    if channel_is_private and channel_id not in joined_request_channel:
                         is_subscribed = False
                         break
-        except Exception:
-             # در صورت بروز خطا فرض را بر عدم عضویت می‌گذاریم
-             is_subscribed = False
+
+                    if not channel_is_private:
+                        try:
+                            member = await client.get_chat_member(chat_id=channel_id, user_id=user_id)
+                            if member.status not in status:
+                                is_subscribed = False
+                                break
+                        except UserNotParticipant:
+                            is_subscribed = False
+                            break
+            except Exception:
+                 # در صورت بروز خطا فرض را بر عدم عضویت می‌گذاریم
+                 is_subscribed = False
 
     if is_subscribed:
         # 1. حذف پیام جوین اجباری
@@ -320,4 +323,4 @@ HelpCmd.set_help(
     description=file_start.__doc__,
     allow_global=True,
     allow_non_admin=True,
-    )
+)
