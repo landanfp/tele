@@ -16,7 +16,8 @@ database = MongoDB()
 
 # Global ADMIN list synced with database
 ADMIN = list(config.ROOT_ADMINS_ID)
-DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)  # Capture initial owners at startup
+#DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)  # Capture initial owners at startup
+DEFAULT_OWNERS = set(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())
 logger.info(f"Initialized DEFAULT_OWNERS: {DEFAULT_OWNERS}")
 
 # Store the message ID of the settings panel to update it
