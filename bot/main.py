@@ -16,7 +16,7 @@ from bot.options import options
 from bot.utilities.helpers import NoInviteLinkError, PyroHelper, RateLimiter
 from bot.utilities.http_server import HTTPServer
 from bot.utilities.schedule_manager import schedule_manager
-from bot.plugins.base.set import update_admin_list  # تغییر: import برای لود ADMIN
+from bot.plugins.base.set import update_admin_list, ADMIN  # فیکس: import ADMIN هم اضافه شد
 
 install(show_locals=True)
 
@@ -51,8 +51,8 @@ async def main() -> None:
 
     # Load database settings
     await options.load_settings()
-    await update_admin_list()  # تغییر: لود ADMIN از DB
-    config.ROOT_ADMINS_ID = ADMIN  # تغییر: sync با global ADMIN (از set.py)
+    await update_admin_list()  # لود ADMIN از DB
+    config.sync_admins(ADMIN)  # فیکس: استفاده از متد sync به جای direct assign
 
     await bot_client.start()
     # Bot setup
