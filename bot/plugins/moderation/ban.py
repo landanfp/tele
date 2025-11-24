@@ -14,12 +14,13 @@ from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage
 from bot.utilities.pyrotools import HelpCmd
+from bot.utilities.pyrofilters import PyroFilters
 
 database = MongoDB()
 
 
 @Client.on_message(
-    filters.private & filters.command("ban"),
+    filters.private & PyroFilters.admin() & filters.command("ban"),
 )
 @RateLimiter.hybrid_limiter(func_count=1)
 async def ban_user(client: Client, message: ConvoMessage) -> Message | None:
