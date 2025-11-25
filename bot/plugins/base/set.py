@@ -1,7 +1,6 @@
-# bot/plugins/base/set.py file :
 import logging
-# اگر نتونیم ادمین حذف کنیم اینو فعال میکنیم
-import os
+import time
+#import os 
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message
@@ -16,30 +15,25 @@ from bot.utilities.pyrotools import HelpCmd
 logger = logging.getLogger(__name__)
 database = MongoDB()
 
-# Global ADMIN list synced with database
-ADMIN = list(config.ROOT_ADMINS_ID)
-#DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)  # Capture initial owners at startup
-DEFAULT_OWNERS = set(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())
+# Capture initial owners at startup (only original admins from config/env)
+DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)
+#DEFAULT_OWNERS = set(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())
 logger.info(f"Initialized DEFAULT_OWNERS: {DEFAULT_OWNERS}")
 
-# Store the message ID of the settings panel to update it
-# {chat_id: message_id}
+# settings_panel_message_ids and user_awaiting_admin_input
 settings_panel_message_ids = {}
-# Store user state for who is currently adding an admin
-# {user_id: (prompt_message_id, original_admin_settings_message_id)}
 user_awaiting_admin_input = {}
 
 def get_admin_buttons():
     """Generate buttons for each admin ID and an add button."""
     buttons = [[InlineKeyboardButton("➕ افزودن ادمین", callback_data="add_admin")]]
-    for admin_id in ADMIN:
+    for admin_id in config.ROOT_ADMINS_ID:
         buttons.append([InlineKeyboardButton(f"Admin ID: {admin_id}", callback_data=f"admin_{admin_id}")])
     return InlineKeyboardMarkup(buttons)
 
 def get_delay_status_text():
     """Get current delay status text (placeholder, adapt to your delay var if exists)."""
-    # Assuming a delay setting in options, e.g., FREE_DELAY_SECONDS
-    delay = getattr(options.settings, 'FREE_DELAY_SECONDS', 0)  # Add to SettingsModel if needed
+    delay = getattr(options.settings, 'FREE_DELAY_SECONDS', 0)
     return f"{delay} ثانیه" if delay > 0 else "غیرفعال"
 
 @Client.on_message(
@@ -48,10 +42,8 @@ def get_delay_status_text():
 @RateLimiter.hybrid_limiter(func_count=1)
 async def settings_command(client: Client, message: Message):
     chat_id = message.chat.id
-    user_id = message.from_user.id
 
-    # Log for debugging
-    logger.info(f"Settings command called by user {user_id}")
+    logger.info(f"Settings command called by user {message.from_user.id}")
 
     status_text = get_delay_status_text()
 
@@ -73,10 +65,9 @@ async def settings_command(client: Client, message: Message):
 @Client.on_callback_query(filters.regex("admin_settings"))
 async def admin_settings_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
-    original_settings_message_id = query.message.id  # This is the main settings panel message
+    original_settings_message_id = query.message.id
 
-    # Check if the user is an admin
-    if user_id not in ADMIN:
+    if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
@@ -84,7 +75,7 @@ async def admin_settings_callback(client: Client, query: CallbackQuery):
         "👑 **تنظیمات ادمین**\n\nلیست ادمین‌های فعلی:",
         reply_markup=get_admin_buttons()
     )
-    settings_panel_message_ids[query.message.chat.id] = admin_msg.id  # Update to track admin settings panel
+    settings_panel_message_ids[query.message.chat.id] = admin_msg.id
     await query.answer("تنظیمات ادمین باز شد.")
 
 @Client.on_callback_query(filters.regex(r"^admin_(\d+)$"))
@@ -92,27 +83,22 @@ async def admin_id_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     admin_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
-    if user_id not in ADMIN:
+    if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Check if admin_id is a default owner
     if admin_id in DEFAULT_OWNERS:
         await query.answer("⚠️ نمی‌توانید مالک را حذف کنید!", show_alert=True)
         return
 
-    # Prevent removing the last admin
-    if len(ADMIN) <= 1:
+    if len(config.ROOT_ADMINS_ID) <= 1:
         await query.answer("⚠️ نمی‌توانید آخرین ادمین را حذف کنید!", show_alert=True)
         return
 
-    # Prevent admin from removing themselves
     if user_id == admin_id:
         await query.answer("⚠️ شما نمی‌توانید خودتان را حذف کنید!", show_alert=True)
         return
 
-    # Show confirmation message with Yes/Back buttons
     buttons = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("✅ بله", callback_data=f"remove_admin_{admin_id}")],
@@ -135,34 +121,26 @@ async def remove_admin_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     admin_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
-    if user_id not in ADMIN:
+    if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Check if admin_id is a default owner
     if admin_id in DEFAULT_OWNERS:
         await query.answer("⚠️ نمی‌توانید مالک را حذف کنید!", show_alert=True)
         return
 
-    # Check if the admin_id is still in ADMIN
-    if admin_id not in ADMIN:
+    if admin_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ این کاربر دیگر ادمین نیست!", show_alert=True)
         return
 
-    # Remove admin from list and save to DB
-    new_admins = list(ADMIN)
-    new_admins.remove(admin_id)
-    ADMIN[:] = new_admins  # Update global
+    config.ROOT_ADMINS_ID.remove(admin_id)
     await database.db["BotSettings"].update_one(
         {"_id": "Admins"},
-        {"$set": {"admins": ADMIN}},
+        {"$set": {"admins": list(config.ROOT_ADMINS_ID)}},
         upsert=True
     )
-    config.sync_admins(ADMIN)  # فیکس: sync با config برای فیلترها
-    logger.info(f"Admin ID {admin_id} removed by user {user_id}. Updated ADMIN list: {ADMIN}")
+    logger.info(f"Admin ID {admin_id} removed by user {user_id}. Updated ROOT_ADMINS_ID: {config.ROOT_ADMINS_ID}")
 
-    # Send notification to the removed admin
     try:
         await client.send_message(
             chat_id=admin_id,
@@ -172,7 +150,6 @@ async def remove_admin_callback(client: Client, query: CallbackQuery):
     except Exception as e:
         logger.error(f"Failed to send removal notification to user {admin_id}: {e}")
 
-    # Update admin settings panel
     try:
         await query.message.edit_text(
             "👑 **تنظیمات ادمین**\n\nلیست ادمین‌های فعلی:",
@@ -189,12 +166,10 @@ async def cancel_remove_admin_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     admin_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
-    if user_id not in ADMIN:
+    if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Return to admin settings panel
     try:
         await query.message.edit_text(
             "👑 **تنظیمات ادمین**\n\nلیست ادمین‌های فعلی:",
@@ -208,17 +183,14 @@ async def cancel_remove_admin_callback(client: Client, query: CallbackQuery):
 @Client.on_callback_query(filters.regex("add_admin"))
 async def add_admin_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
-    original_admin_settings_message_id = query.message.id  # This is the admin settings panel message
+    original_admin_settings_message_id = query.message.id
 
-    # Check if the user is an admin
-    if user_id not in ADMIN:
+    if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Check if this user already has a prompt active to prevent multiple prompts
     if user_id in user_awaiting_admin_input:
         try:
-            # Attempt to delete the old prompt if it exists
             old_prompt_id, _ = user_awaiting_admin_input[user_id]
             await client.delete_messages(query.message.chat.id, old_prompt_id)
         except Exception as e:
@@ -228,46 +200,50 @@ async def add_admin_callback(client: Client, query: CallbackQuery):
         "لطفا ID عددی کاربر را برای افزودن به لیست ادمین‌ها ارسال کنید.",
         quote=True
     )
-    user_awaiting_admin_input[user_id] = (prompt_msg.id, original_admin_settings_message_id)
+    user_awaiting_admin_input[user_id] = (prompt_msg.id, original_admin_settings_message_id, time.time())  # Add timestamp
     await query.answer("در انتظار دریافت ID ادمین جدید...")
 
 @Client.on_message(
-    filters.private & PyroFilters.admin() & filters.text & ~filters.command([]),
+    filters.private & PyroFilters.admin() & filters.text,
 )
 @RateLimiter.hybrid_limiter(func_count=1)
 async def receive_input_value(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # Log for debugging
     logger.info(f"Input received from user {user_id}: {message.text}")
 
-    # Handle admin ID input
     if user_id in user_awaiting_admin_input:
-        prompt_message_id, admin_settings_message_id = user_awaiting_admin_input[user_id]
+        # Timeout: 5 minutes (300 seconds)
+        if time.time() - user_awaiting_admin_input[user_id][2] > 300:
+            del user_awaiting_admin_input[user_id]
+            logger.info(f"Admin input state timed out for user {user_id}")
+            return message.continue_propagation()
 
-        # Check if the input is a valid number
+        # If it's a command (starts with /), skip and propagate
+        if message.text.startswith('/'):
+            logger.info(f"Skipping command '{message.text}' during admin input state for user {user_id}")
+            return message.continue_propagation()
+
+        prompt_message_id, admin_settings_message_id, _ = user_awaiting_admin_input[user_id]
+
         if not message.text.isdigit():
             await message.reply_text("⚠️ ورودی نامعتبر است. لطفا فقط ID عددی ارسال کنید.", quote=True)
-            return
+            return message.continue_propagation()
 
         new_admin_id = int(message.text)
 
-        # Check if the ID is already in ADMIN
-        if new_admin_id in ADMIN:
+        if new_admin_id in config.ROOT_ADMINS_ID:
             await message.reply_text("⚠️ این ID قبلاً در لیست ادمین‌ها وجود دارد!", quote=True)
-            return
+            return message.continue_propagation()
 
-        # Update ADMIN list and save to DB
-        ADMIN.append(new_admin_id)
+        config.ROOT_ADMINS_ID.append(new_admin_id)
         await database.db["BotSettings"].update_one(
             {"_id": "Admins"},
-            {"$set": {"admins": ADMIN}},
+            {"$set": {"admins": list(config.ROOT_ADMINS_ID)}},
             upsert=True
         )
-        config.sync_admins(ADMIN)  # فیکس: sync با config برای فیلترها
-        logger.info(f"New admin ID {new_admin_id} added by admin {user_id}. Updated ADMIN list: {ADMIN}")
+        logger.info(f"New admin ID {new_admin_id} added by admin {user_id}. Updated ROOT_ADMINS_ID: {config.ROOT_ADMINS_ID}")
 
-        # Send notification to the new admin
         try:
             await client.send_message(
                 chat_id=new_admin_id,
@@ -277,13 +253,11 @@ async def receive_input_value(client: Client, message: Message):
         except Exception as e:
             logger.error(f"Failed to send admin promotion notification to user {new_admin_id}: {e}")
 
-        # Delete prompt and input messages
         try:
             await client.delete_messages(chat_id=message.chat.id, message_ids=[prompt_message_id, message.id])
         except Exception as e:
             logger.error(f"Error deleting prompt/input messages for admin setting: {e}")
 
-        # Update admin settings panel
         try:
             await client.edit_message_reply_markup(
                 chat_id=message.chat.id,
@@ -295,18 +269,14 @@ async def receive_input_value(client: Client, message: Message):
             logger.error(f"Error updating admin settings panel markup: {e}")
             await client.send_message(message.chat.id, f"✅ ادمین جدید با ID {new_admin_id} اضافه شد، اما نمایش پنل ادمین به‌روز نشد.")
 
-        # Clear user state
         del user_awaiting_admin_input[user_id]
-        return
+        return message.continue_propagation()
 
-    # Handle other inputs (e.g., delay) if implemented
-    # Placeholder for delay input - add FREE_DELAY_SECONDS to SettingsModel if needed
-    # elif user_id in user_awaiting_delay_input:
-    #     ... (similar logic)
+    return message.continue_propagation()
 
 HelpCmd.set_help(
     command="settings",
     description="دسترسی به پنل تنظیمات ربات برای مدیریت ادمین‌ها و سایر تنظیمات.",
     allow_global=False,
     allow_non_admin=False,
-)
+    )
