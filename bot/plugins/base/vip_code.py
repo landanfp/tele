@@ -1,4 +1,3 @@
-# bot/plugins/base/vip_code.py file :
 import uuid
 import logging
 import datetime
@@ -20,8 +19,8 @@ VIP_PLAN_NAME = "vip_15days"  # 10 لینک روزانه، 15 روز
 VIP_PLAN_DURATION = 15  # روز
 LOG_CHANNEL = config.BACKUP_CHANNEL  # Assuming backup as log
 
-# فیکس: استفاده از PyroFilters.admin() به جای filters.user برای dynamic admins (sync با set.py)
-admin_filter = PyroFilters.admin()
+# تعریف admin_filter با استفاده از filters.user برای ROOT_ADMINS_ID
+admin_filter = filters.user(config.ROOT_ADMINS_ID)
 
 async def generate_vip_code():
     """تولید کد VIP منحصر به فرد."""
@@ -52,27 +51,18 @@ async def mark_vip_code_as_used(code: str, user_id: int):
     )
     return result.modified_count > 0
 
-# فیکس: متد set_user_plan رو به عنوان helper محلی implement کن (چون در MongoDB اصلی وجود نداره)
-async def set_user_plan(user_id: int, plan_name: str, expiry_date: str):
-    """تنظیم پلن کاربر در دیتابیس."""
-    collection = db.db["Users"]
-    result = await collection.update_one(
-        {"_id": user_id},
-        {"$set": {"plan": plan_name, "plan_expiry": expiry_date}},
-        upsert=True
-    )
-    return result.acknowledged
-
 @Client.on_message(filters.private & admin_filter & filters.command("create_vip"))
 @RateLimiter.hybrid_limiter(func_count=1)
 async def create_vip_code(client: Client, message: Message):
     """تولید کد VIP برای ادمین."""
-    if message.from_user.id not in config.ROOT_ADMINS_ID:  # فیکس: fallback به ROOT_ADMINS_ID برای امنیت
+    if message.from_user.id not in config.ROOT_ADMINS_ID:
         logger.warning(f"Unauthorized access to create_vip by user {message.from_user.id}")
         return await message.reply(
             text="❌ **شما ادمین نیستید!**",
             quote=True,
         )
+    # Update ADMIN list before processing (اگر تابعی داری، اضافه کن)
+    # update_admin_list()  # کامنت‌شده اگر وجود نداره
 
     code = await generate_vip_code()
     saved = await add_vip_code_to_db(code)
@@ -118,17 +108,14 @@ async def redeem_vip_code(client: Client, message: Message):
     if await is_vip_code_valid(code):
         if await mark_vip_code_as_used(code, user_id):
             expiry_date = datetime.date.today() + datetime.timedelta(days=VIP_PLAN_DURATION)
-            saved = await set_user_plan(user_id, VIP_PLAN_NAME, expiry_date.isoformat())
-            if saved:
-                await message.reply(f"✅ پلن {VIP_PLAN_NAME.replace('_', ' ')} با موفقیت برای شما فعال شد به مدت {VIP_PLAN_DURATION} روز (10 لینک روزانه).")
-                try:
-                    user = message.from_user
-                    user_info_log = f"{user.first_name} (@{user.username or 'no_username'})" if user.username else user.first_name
-                    await client.send_message(LOG_CHANNEL, f"🆔 کد VIP `{code}` توسط {user_info_log} (ID: {user_id}) استفاده شد.\nپلن: {VIP_PLAN_NAME}")
-                except Exception as e:
-                    logger.warning(f"Failed to log VIP redemption: {e}")
-            else:
-                await message.reply("❌ خطا در به‌روزرسانی پلن. دوباره امتحان کنید.")
+            await db.set_user_plan(user_id, VIP_PLAN_NAME, expiry_date.isoformat())
+            await message.reply(f"✅ پلن {VIP_PLAN_NAME.replace('_', ' ')} با موفقیت برای شما فعال شد به مدت {VIP_PLAN_DURATION} روز (10 لینک روزانه).")
+            try:
+                user = message.from_user
+                user_info_log = f"{user.first_name} (@{user.username or 'no_username'})" if user.username else user.first_name
+                await client.send_message(LOG_CHANNEL, f"🆔 کد VIP `{code}` توسط {user_info_log} (ID: {user_id}) استفاده شد.\nپلن: {VIP_PLAN_NAME}")
+            except Exception as e:
+                logger.warning(f"Failed to log VIP redemption: {e}")
         else:
             logger.warning(f"Code {code} already used or mark failed")
             await message.reply("کد وارد شده قبلاً استفاده شده است.")
