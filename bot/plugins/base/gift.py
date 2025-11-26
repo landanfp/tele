@@ -22,12 +22,13 @@ GIFT_PLAN_DURATION = 7
 # Simple state manager using a dictionary
 user_states = {}  # {user_id: {'step': str, 'phone': str}}
 
-async def is_gift_plan_used(user_id: int) -> bool:
-    """چک می‌کند آیا کاربر قبلاً از پلن هدیه استفاده کرده است."""
-    print(f"DEBUG: Checking gift plan used for user {user_id}")
-    user = await db.db["Users"].find_one({'_id': user_id, 'plan': GIFT_PLAN_NAME})
-    used = True if user and user.get('plan_expiry') is not None else False
-    print(f"DEBUG: Gift plan used? {used}")
+### تغییر: تابع جدید برای چک استفاده دائمی از هدیه
+async def has_used_gift(user_id: int) -> bool:
+    """چک می‌کند آیا کاربر قبلاً از پلن هدیه استفاده کرده است (دائمی)."""
+    print(f"DEBUG: Checking gift used for user {user_id}")
+    user = await db.db["Users"].find_one({'_id': user_id})
+    used = user.get('gift_used', False) if user else False
+    print(f"DEBUG: Gift used? {used}")
     return used
 
 def get_user_state(user_id: int):
@@ -68,8 +69,9 @@ async def activate_gift_plan(client: Client, message: Message) -> None:
             await message.reply_text("⚠️ شما به دلیل داشتن پلن ویژه قادر به دریافت این هدیه نیستید.")
             return
 
-    if await is_gift_plan_used(user_id):
-        await message.reply_text("⚠️ شما قبلاً از این هدیه استفاده کرده‌اید.")
+    ### تغییر: استفاده از تابع جدید برای چک دائمی
+    if await has_used_gift(user_id):
+        await message.reply_text("⚠️ شما قبلاً از این هدیه استفاده کرده‌اید و نمی‌توانید دوباره دریافت کنید.")
         return
 
     # تنظیم state اولیه
@@ -136,6 +138,14 @@ async def handle_phone_share(client: Client, message: Message) -> None:
     try:
         await db.set_user_plan(user_id, GIFT_PLAN_NAME, expiry_date.isoformat())
         print(f"DEBUG: Plan set successfully for user {user_id}")
+        
+        ### تغییر: ست کردن فیلد دائمی gift_used بعد از فعال‌سازی
+        await db.db["Users"].update_one(
+            {'_id': user_id},
+            {'$set': {'gift_used': True}}
+        )
+        print(f"DEBUG: Gift used flag set for user {user_id}")
+        
     except Exception as e:
         print(f"DEBUG: Error setting plan: {e}")
         try:
