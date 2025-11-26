@@ -1,4 +1,5 @@
 # bot/config.py file : 
+# bot/config.py file : 
 """General configuration.
 
 Config: Bot Config
@@ -72,10 +73,10 @@ class Config(BaseSettings):
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
     ROOT_ADMINS_ID: list[int] = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # فیکس: type annotation اضافه شد
+    FORCE_SUB_CHANNELS: list[int] = list(int(x) for x in os.environ.get("FORCE_SUB_CHANNELS", "-1001208480573").split())
 
     PRIVATE_REQUEST: bool = False
     PROTECT_CONTENT: bool = True 
-    FORCE_SUB_CHANNELS: list[int] = []
     AUTO_GENERATE_LINK: bool = True
 
     # Injected Config
