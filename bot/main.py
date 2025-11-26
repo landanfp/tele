@@ -1,5 +1,4 @@
 # bot/main.py file :
-# bot/main.py file :
 # farshidband
 import asyncio
 import logging
