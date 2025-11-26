@@ -18,7 +18,7 @@ user_attempts = {}
 user_failed = {}
 user_last_use = {}  # برای cooldown: {user_id: timestamp}
 
-COOLDOWN_SECONDS = 43200  # 12 ساعت
+COOLDOWN_SECONDS = 30  # 12 ساعت 43200
 VIP_PLAN_NAME = "vip_15days"  # از vip_code.py
 LOG_CHANNEL = config.BACKUP_CHANNEL  # کانال لاگ
 
