@@ -1,3 +1,4 @@
+# bot/utilities/helpers/pyrohelper.py file :
 from typing import Any, TypedDict, cast
 
 from pyrogram import raw
@@ -48,24 +49,34 @@ class PyroHelper:
 
         for channel_id in channels:
             channel = await client.get_chat(chat_id=channel_id)
-            get_link = await client.invoke(
-                raw.functions.messages.ExportChatInvite(  # type: ignore[reportPrivateImportUsage]
-                    peer=await client.resolve_peer(peer_id=channel_id),  # type: ignore[reportArgumentType]
-                    legacy_revoke_permanent=True,
-                    request_needed=config.PRIVATE_REQUEST,
-                ),
-            )
-
-            if get_link is not None:
-                channel_invite = get_link.link  # type: ignore[reportAttributeAccessIssue]if channel.title not in channels_n_invite:
+            
+            if channel.username:
+                # For public channels, use direct username link
+                channel_invite = f"https://t.me/{channel.username}"
                 channels_n_invite[channel.title] = ChannelInfo(
-                    is_private=bool(channel.username is None),  # type: ignore[reportAttributeAccessIssue]
+                    is_private=False,
                     invite_link=channel_invite,
                     channel_id=channel_id,
                 )
-
             else:
-                raise NoInviteLinkError(channel_id)
+                # For private channels, export invite without revoking previous one
+                get_link = await client.invoke(
+                    raw.functions.messages.ExportChatInvite(  # type: ignore[reportPrivateImportUsage]
+                        peer=await client.resolve_peer(peer_id=channel_id),  # type: ignore[reportArgumentType]
+                        legacy_revoke_permanent=False,  # Changed to False to keep stable link
+                        request_needed=config.PRIVATE_REQUEST,
+                    ),
+                )
+
+                if get_link is not None:
+                    channel_invite = get_link.link  # type: ignore[reportAttributeAccessIssue]
+                    channels_n_invite[channel.title] = ChannelInfo(
+                        is_private=True,
+                        invite_link=channel_invite,
+                        channel_id=channel_id,
+                    )
+                else:
+                    raise NoInviteLinkError(channel_id)
 
         return channels_n_invite
 
