@@ -1,4 +1,5 @@
 # bot/main.py file :
+# bot/main.py file :
 # farshidband
 import asyncio
 import logging
@@ -52,6 +53,17 @@ async def load_admins_from_db():  # فیکس: تابع محلی async برای �
     logging.info(f"Loaded ADMIN list from DB: {ADMIN}")
     config.sync_admins(ADMIN)  # sync با config
 
+async def load_channels_from_db():  # جدید: تابع محلی async برای لود channels
+    """Load channels from DB and update config.FORCE_SUB_CHANNELS."""
+    database = MongoDB()
+    channels_doc = await database.db["BotSettings"].find_one({"_id": "Channels"}, {"channels": 1})
+    if channels_doc and "channels" in channels_doc:
+        config.FORCE_SUB_CHANNELS = list(channels_doc["channels"])
+    else:
+        # fallback به config (که از env می‌آد)
+        pass
+    logging.info(f"Loaded FORCE_SUB_CHANNELS from DB: {config.FORCE_SUB_CHANNELS}")
+
 async def main() -> None:
     bot_client = Client(
         name=config.BOT_SESSION,
@@ -66,6 +78,7 @@ async def main() -> None:
     # Load database settings
     await options.load_settings()
     await load_admins_from_db()  # فیکس: لود admins محلی بدون import از set
+    await load_channels_from_db()  # جدید: لود channels
 
     await bot_client.start()
     # Bot setup
