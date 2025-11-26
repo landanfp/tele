@@ -56,12 +56,27 @@ async def load_admins_from_db():  # فیکس: تابع محلی async برای �
 async def load_channels_from_db():  # جدید: تابع محلی async برای لود channels
     """Load channels from DB and update config.FORCE_SUB_CHANNELS."""
     database = MongoDB()
+    
+    # Save original env value before loading from DB
+    env_channels = config.FORCE_SUB_CHANNELS.copy()
+    
     channels_doc = await database.db["BotSettings"].find_one({"_id": "Channels"}, {"channels": 1})
     if channels_doc and "channels" in channels_doc:
         config.FORCE_SUB_CHANNELS = list(channels_doc["channels"])
     else:
         # fallback به config (که از env می‌آد)
         pass
+    
+    # If env was empty but DB had values, sync DB to empty (clear DB)
+    if len(env_channels) == 0 and len(config.FORCE_SUB_CHANNELS) > 0:
+        config.FORCE_SUB_CHANNELS = []
+        await database.db["BotSettings"].update_one(
+            {"_id": "Channels"},
+            {"$set": {"channels": []}},
+            upsert=True
+        )
+        logging.info("Synced empty env to DB: Cleared FORCE_SUB_CHANNELS in DB")
+    
     logging.info(f"Loaded FORCE_SUB_CHANNELS from DB: {config.FORCE_SUB_CHANNELS}")
 
 async def main() -> None:
