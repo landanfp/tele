@@ -242,7 +242,7 @@ async def channel_settings_callback(client: Client, query: CallbackQuery):
     await query.answer("تنظیمات کانال باز شد.")
 
 
-@Client.on_callback_query(filters.regex(r"^channel_(\d+)$"))
+@Client.on_callback_query(filters.regex(r"^channel_(-?\d+)$"))
 async def channel_id_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
@@ -271,7 +271,7 @@ async def channel_id_callback(client: Client, query: CallbackQuery):
         await query.message.reply_text("⚠️ خطایی در نمایش پیام تأیید رخ داد!", quote=True)
 
 
-@Client.on_callback_query(filters.regex(r"^remove_channel_(\d+)$"))
+@Client.on_callback_query(filters.regex(r"^remove_channel_(-?\d+)$"))
 async def remove_channel_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
@@ -316,7 +316,7 @@ async def remove_channel_callback(client: Client, query: CallbackQuery):
         await query.message.reply_text("⚠️ خطایی در به‌روزرسانی پنل کانال رخ داد، اما کانال حذف شد!", quote=True)
 
 
-@Client.on_callback_query(filters.regex(r"^cancel_remove_channel_(\d+)$"))
+@Client.on_callback_query(filters.regex(r"^cancel_remove_channel_(-?\d+)$"))
 async def cancel_remove_channel_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
