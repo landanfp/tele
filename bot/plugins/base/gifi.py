@@ -61,7 +61,7 @@ async def gifi_command(client: Client, message):
 
     # ذخیره اطلاعات کاربر
     user_lucky_numbers[user_id] = lucky_number
-    user_attempts[user_id] = 1  # ۱ تلاش
+    user_attempts[user_id] = 8  # ۱ تلاش
     user_failed[user_id] = True
     user_last_use[user_id] = current_time  # آپدیت cooldown
 
