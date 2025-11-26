@@ -1,4 +1,5 @@
 # bot/plugins/base/set.py file :
+# © @FarshidBand 
 import logging
 import time
 from pyrogram import filters
