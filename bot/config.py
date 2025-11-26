@@ -1,5 +1,5 @@
 # bot/config.py file : 
-# bot/config.py file : 
+# © @FarshidBand 
 """General configuration.
 
 Config: Bot Config
