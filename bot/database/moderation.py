@@ -239,3 +239,22 @@ class Moderation:
     async def get_all_users(self):
         """دریافت همه کاربران."""
         return self.db["Users"].find({})
+
+    async def get_banned_users(self) -> list[dict]:
+        """
+        Retrieves a list of banned users.
+        """
+        collection = self.db["Users"]
+        # پیدا کردن کاربرانی که فیلد banned آنها True است
+        cursor = collection.find({"banned": True})
+        banned_users_list = await cursor.to_list(length=None)
+
+        # چون در دیتابیس کلید اصلی _id است اما فایل ban_list.py کلید id را میخواهد
+        # مقدار _id را در id هم کپی میکنیم تا ارور ندهد
+        results = []
+        for user in banned_users_list:
+            if '_id' in user:
+                user['id'] = user['_id']
+            results.append(user)
+
+        return results
