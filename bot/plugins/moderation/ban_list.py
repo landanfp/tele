@@ -8,7 +8,6 @@ from pyrogram.types import Message
 from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
-from bot.utilities.pyrofilters import PyroFilters
 from bot.utilities.pyrotools import HelpCmd
 
 logger = logging.getLogger(__name__)
@@ -38,12 +37,13 @@ async def ban_list_handler(client: Client, message: Message) -> Message | None:
         )
 
     try:
+        # این تابع را در مرحله قبل به فایل moderation.py اضافه کردیم
         banned_users = await database.get_banned_users()
         logger.info(f"Found {len(banned_users)} banned users from DB")
     except Exception as e:
         logger.error(f"Error fetching banned users: {e}")
         return await message.reply(
-            text="❌ **خطا در خواندن دیتابیس!**",
+            text="❌ **خطا در خواندن دیتابیس!**\n(مطمئن شوید فایل moderation.py را آپدیت کرده‌اید)",
             quote=True,
         )
 
@@ -54,38 +54,36 @@ async def ban_list_handler(client: Client, message: Message) -> Message | None:
             quote=True,
         )
 
-    ban_list_text = "**لیست کاربران بن شده:**\n\n"
+    msg = await message.reply("⏳ **در حال دریافت اطلاعات کاربران...**", quote=True)
+    
+    ban_list_text = "**🚫 لیست کاربران بن شده:**\n\n"
+    
     for idx, user_info in enumerate(banned_users, 1):
         user_id = user_info.get('id')
         if not user_id:
-            logger.warning(f"Invalid user_info in banned_users: {user_info}")
             continue
 
-        logger.info(f"Processing banned user {idx}: ID {user_id}")
         try:
+            # تلاش برای دریافت اطلاعات تازه کاربر از تلگرام
             user = await client.get_users(user_id)
-            user_name = (user.first_name or "") + (" " + user.last_name if user.last_name else "")
-            if not user_name.strip():
-                user_name = f"کاربر {user_id}"
-            logger.info(f"Successfully fetched user {user_id}: {user_name}")
-        except Exception as e:
-            logger.warning(f"Failed to get user {user_id}: {e}")
-            user_name = f"کاربر {user_id} (نامشخص)"
+            # ساخت لینک قابل کلیک با نام کاربر
+            user_link = user.mention(style="md")
+        except Exception:
+            # اگر کاربر پیدا نشد (مثلاً دیلیت اکانت)
+            user_link = f"[کاربر {user_id}](tg://user?id={user_id})"
 
-        ban_list_text += f"`{user_name}` | `{user_id}`\n"
+        # فرمت خروجی: شماره. نام (لینک دار) | آیدی عددی
+        ban_list_text += f"{idx}. {user_link} | `{user_id}`\n"
 
-    if len(ban_list_text.strip()) <= len("**لیست کاربران بن شده:**\n\n"):  # اگر فقط عنوان باشه
-        logger.warning("Ban list text is empty after processing")
-        return await message.reply(
-            text="✅ هیچ کاربر بن‌شده‌ای با جزئیات معتبر یافت نشد!",
-            quote=True,
-        )
-
-    logger.info(f"Sending ban list with {len(banned_users)} users")
-    return await message.reply(
-        text=ban_list_text,
-        quote=True,
-    )
+    try:
+        await msg.edit_text(ban_list_text)
+    except Exception as e:
+        logger.error(f"Error sending ban list: {e}")
+        # اگر متن خیلی طولانی باشد ممکن است ارور بدهد، پس در فایل متنی می‌فرستیم
+        if "MESSAGE_TOO_LONG" in str(e):
+            with open("ban_list.txt", "w", encoding="utf-8") as f:
+                f.write(ban_list_text.replace("*", "").replace("`", ""))
+            await message.reply_document("ban_list.txt", caption="📜 لیست کاربران بن شده (متن طولانی بود)")
 
 
 HelpCmd.set_help(
