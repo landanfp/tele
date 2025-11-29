@@ -180,6 +180,26 @@ async def file_start(
 
     # shouldn't overwrite existing id it already exists
     await database.add_user(user_id=message.from_user.id)
+    # --- بخش جدید: اعمال تاخیر برای کاربران رایگان ---
+    plan = await database.get_user_plan(user_id)
+    if plan == "free":
+        last_sent = user_last_sent.get(user_id, 0)
+        current_time = asyncio.get_event_loop().time()
+        delay = config.FREE_USER_DELAY
+
+        if delay > 0:
+            # بررسی اختلاف زمانی
+            if current_time - last_sent < delay:
+                remaining_time = int(delay - (current_time - last_sent))
+                await message.reply_text(
+                    f"⏱️ **{remaining_time}** ثانیه دیگر می‌توانید فایل جدیدی دریافت کنید.",
+                    quote=True
+                )
+                return message.stop_propagation()
+
+        # اگر زمان سپری شده بود، تایمر را آپدیت می‌کنیم (قبل از پردازش سنگین)
+        user_last_sent[user_id] = current_time
+    # ----------------------------------------------------
 
     base64_file_link = message.text.split(maxsplit=1)[1]
     file_document = await database.get_link_document(base64_file_link=base64_file_link)
