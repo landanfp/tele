@@ -1,4 +1,3 @@
-# bot/plugins/base/set.py file :
 # © @FarshidBand 
 import logging
 import time
@@ -22,10 +21,20 @@ DEFAULT_OWNERS = set(config.ROOT_ADMINS_ID)
 # settings_panel_message_ids and user_awaiting_admin_input
 settings_panel_message_ids = {}
 user_awaiting_admin_input = {}
+user_awaiting_delay_input = {}  # اضافه شده
 
 # Store user state for who is currently adding a channel
 # {user_id: (prompt_message_id, original_channel_settings_message_id, timestamp)}
 user_awaiting_channel_input = {}
+
+
+def get_delay_status_text():
+    """Get current delay status text"""
+    current_delay = config.FREE_USER_DELAY  # استفاده از config به جای stream_module
+    if current_delay == 0:
+        return "غیرفعال"
+    else:
+        return f"فعال - {current_delay} ثانیه"
 
 
 def get_admin_buttons():
@@ -34,12 +43,6 @@ def get_admin_buttons():
     for admin_id in config.ROOT_ADMINS_ID:
         buttons.append([InlineKeyboardButton(f"Admin ID: {admin_id}", callback_data=f"admin_{admin_id}")])
     return InlineKeyboardMarkup(buttons)
-
-
-def get_delay_status_text():
-    """Get current delay status text (placeholder, adapt to your delay var if exists)."""
-    delay = getattr(options.settings, 'FREE_DELAY_SECONDS', 0)
-    return f"{delay} ثانیه" if delay > 0 else "غیرفعال"
 
 
 def get_channel_buttons():
@@ -77,6 +80,37 @@ async def settings_command(client: Client, message: Message):
         quote=True
     )
     settings_panel_message_ids[chat_id] = settings_msg.id
+
+
+@Client.on_callback_query(filters.regex("set_free_delay"))
+async def set_free_delay_callback(client: Client, query: CallbackQuery):
+    user_id = query.from_user.id
+    original_settings_message_id = query.message.id  # This is the settings panel message
+
+    # Check if the user is the owner
+    if user_id not in config.ROOT_ADMINS_ID:  # استفاده از config.ROOT_ADMINS_ID به جای Var.OWNER_ID
+        await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
+        return
+
+    # Check if this user already has a prompt active to prevent multiple prompts
+    if user_id in user_awaiting_delay_input:
+        try:
+            # Attempt to delete the old prompt if it exists
+            old_prompt_id, _ , _ = user_awaiting_delay_input[user_id]
+            await client.delete_messages(query.message.chat.id, old_prompt_id)
+        except Exception as e:
+            logger.warning(f"Could not delete old prompt for {user_id}: {e}")
+
+    prompt_msg = await query.message.reply_text(
+        "لطفا مدت زمان جدید برای محدودیت کاربران رایگان را به **عدد (ثانیه)** ارسال کنید.\n"
+        "برای غیرفعال کردن محدودیت، عدد **0** را ارسال نمایید.",
+        quote=True
+    )
+    user_awaiting_delay_input[user_id] = (prompt_msg.id, original_settings_message_id, time.time())  # اضافه کردن timestamp
+    try:
+        await query.answer("در انتظار دریافت مقدار جدید...")
+    except Exception as e:
+        logger.warning(f"Failed to answer callback query for set_free_delay: {e}")
 
 
 @Client.on_callback_query(filters.regex("admin_settings"))
@@ -221,16 +255,15 @@ async def add_admin_callback(client: Client, query: CallbackQuery):
         "لطفا ID عددی کاربر را برای افزودن به لیست ادمین‌ها ارسال کنید.",
         quote=True
     )
-    user_awaiting_admin_input[user_id] = (prompt_msg.id, original_admin_settings_message_id, time.time())  # Add timestamp
+    user_awaiting_admin_input[user_id] = (prompt_msg.id, original_admin_settings_message_id, time.time())
     await query.answer("در انتظار دریافت ID ادمین جدید...")
 
 
 @Client.on_callback_query(filters.regex("channel_settings"))
 async def channel_settings_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
-    original_settings_message_id = query.message.id  # This is the main settings panel message
+    original_settings_message_id = query.message.id
 
-    # Check if the user is the owner
     if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
@@ -239,7 +272,7 @@ async def channel_settings_callback(client: Client, query: CallbackQuery):
         "📢 **مدیریت کانال**\n\nلیست کانال‌های فعلی:",
         reply_markup=get_channel_buttons()
     )
-    settings_panel_message_ids[query.message.chat.id] = channel_msg.id  # Update to track channel settings panel
+    settings_panel_message_ids[query.message.chat.id] = channel_msg.id
     await query.answer("تنظیمات کانال باز شد.")
 
 
@@ -248,12 +281,10 @@ async def channel_id_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
     if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Show confirmation message with Yes/Back buttons
     buttons = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("✅ بله", callback_data=f"remove_channel_{channel_id}")],
@@ -277,29 +308,23 @@ async def remove_channel_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
     if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Check if the channel_id is still in FORCE_SUB_CHANNELS
     if channel_id not in config.FORCE_SUB_CHANNELS:
         await query.answer("⚠️ این کانال دیگر در لیست نیست!", show_alert=True)
         return
 
-    # Remove channel from FORCE_SUB_CHANNELS (حذف چک len <=1 برای اجازه خالی کردن)
     config.FORCE_SUB_CHANNELS.remove(channel_id)
-    # Update database
     await database.db["BotSettings"].update_one(
         {"_id": "Channels"},
         {"$set": {"channels": config.FORCE_SUB_CHANNELS}},
         upsert=True
     )
-    # Re-fetch channels_n_invite after removal
     config.channels_n_invite = await PyroHelper.get_channel_invites(client, config.FORCE_SUB_CHANNELS)
     logger.info(f"Channel {channel_id} removed by user {user_id}. Updated FORCE_SUB_CHANNELS: {config.FORCE_SUB_CHANNELS}")
 
-    # Update channel settings panel
     try:
         await query.message.edit_text(
             "📢 **مدیریت کانال**\n\nلیست کانال‌های فعلی:",
@@ -317,12 +342,10 @@ async def cancel_remove_channel_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
     channel_id = int(query.matches[0].group(1))
 
-    # Check if the user is an admin
     if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Return to channel settings panel
     try:
         await query.message.edit_text(
             "📢 **مدیریت کانال**\n\nلیست کانال‌های فعلی:",
@@ -337,17 +360,14 @@ async def cancel_remove_channel_callback(client: Client, query: CallbackQuery):
 @Client.on_callback_query(filters.regex("add_channel"))
 async def add_channel_callback(client: Client, query: CallbackQuery):
     user_id = query.from_user.id
-    original_channel_settings_message_id = query.message.id  # This is the channel settings panel message
+    original_channel_settings_message_id = query.message.id
 
-    # Check if the user is the owner
     if user_id not in config.ROOT_ADMINS_ID:
         await query.answer("⚠️ شما ادمین نیستید!", show_alert=True)
         return
 
-    # Check if this user already has a prompt active to prevent multiple prompts
     if user_id in user_awaiting_channel_input:
         try:
-            # Attempt to delete the old prompt if it exists
             old_prompt_id, _ , _ = user_awaiting_channel_input[user_id]
             await client.delete_messages(query.message.chat.id, old_prompt_id)
         except Exception as e:
@@ -370,8 +390,73 @@ async def receive_input_value(client: Client, message: Message):
 
     logger.info(f"Input received from user {user_id}: {message.text}")
 
-    # First, check for admin input (existing logic)
-    if user_id in user_awaiting_admin_input:
+    # Handle delay input first
+    if user_id in user_awaiting_delay_input:
+        # Timeout: 5 minutes (300 seconds)
+        if time.time() - user_awaiting_delay_input[user_id][2] > 300:
+            del user_awaiting_delay_input[user_id]
+            logger.info(f"Delay input state timed out for user {user_id}")
+            return message.continue_propagation()
+
+        # If it's a command (starts with /), skip and propagate
+        if message.text.startswith('/'):
+            logger.info(f"Skipping command '{message.text}' during delay input state for user {user_id}")
+            return message.continue_propagation()
+
+        prompt_message_id, settings_message_id, _ = user_awaiting_delay_input[user_id]
+
+        # Check if the input is a valid number
+        if not message.text.isdigit():
+            await message.reply_text("⚠️ ورودی نامعتبر است. لطفا فقط عدد ارسال کنید.", quote=True)
+            return message.continue_propagation()
+
+        new_delay = int(message.text)
+
+        if new_delay < 0:
+            await message.reply_text("⚠️ مقدار زمان نمی‌تواند منفی باشد. لطفا یک عدد صحیح مثبت یا صفر ارسال کنید.", quote=True)
+            return message.continue_propagation()
+
+        # Update delay in config
+        config.FREE_USER_DELAY = new_delay
+        logger.info(f"FREE_USER_DELAY in config updated to {new_delay} by admin {user_id}")
+
+        # Delete prompt and input messages
+        try:
+            await client.delete_messages(chat_id=message.chat.id, message_ids=[prompt_message_id, message.id])
+        except Exception as e:
+            logger.error(f"Error deleting prompt/input messages for delay setting: {e}")
+
+        # Update buttons in settings panel
+        new_status_text = get_delay_status_text()
+        new_buttons = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(f"⏱️ تایم محدودیت رایگان: {new_status_text}", callback_data="set_free_delay")],
+                [InlineKeyboardButton("👑 تنظیم ادمین", callback_data="admin_settings")],
+                [InlineKeyboardButton("📢 مدیریت کانال‌ها", callback_data="channel_settings")]
+            ]
+        )
+        try:
+            if message.chat.id in settings_panel_message_ids and settings_panel_message_ids[message.chat.id] == settings_message_id:
+                await client.edit_message_text(
+                    chat_id=message.chat.id,
+                    message_id=settings_message_id,
+                    text="⚙️ **تنظیمات ربات**\n\nدر اینجا می‌توانید تنظیمات مربوط به کاربران رایگان، ادمین‌ها و کانال‌ها را مدیریت کنید:",
+                    reply_markup=new_buttons
+                )
+                await client.send_message(message.chat.id, f"✅ تایم محدودیت کاربران رایگان به «{new_status_text}» تغییر یافت.")
+            else:
+                logger.warning(f"Settings panel ID mismatch or not found for chat {message.chat.id}. Sending new confirmation.")
+                await client.send_message(message.chat.id, f"✅ تایم محدودیت کاربران رایگان به «{new_status_text}» تغییر یافت. (پنل اصلی بروز نشد)")
+        except Exception as e:
+            logger.error(f"Error updating settings panel markup: {e}")
+            await client.send_message(message.chat.id, f"✅ تایم محدودیت کاربران رایگان به «{new_status_text}» تغییر یافت، اما نمایش پنل تنظیمات به‌روز نشد.")
+
+        # Clear user state
+        del user_awaiting_delay_input[user_id]
+        return message.continue_propagation()
+
+    # Then, check for admin input (existing logic)
+    elif user_id in user_awaiting_admin_input:
         # Timeout: 5 minutes (300 seconds)
         if time.time() - user_awaiting_admin_input[user_id][2] > 300:
             del user_awaiting_admin_input[user_id]
