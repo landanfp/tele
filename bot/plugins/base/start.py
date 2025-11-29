@@ -190,9 +190,20 @@ async def file_start(
 
     user_id = message.from_user.id
 
+    # چک محدودیت کلیک روزانه قبل از ارسال (اول این را چک می‌کنیم)
+    daily_clicks = await database.get_daily_clicks(user_id)
+    daily_limit = await database.get_daily_limit(user_id)
+    if daily_clicks >= daily_limit:
+        await message.reply(
+            f"⚠️ محدودیت روزانه شما ({daily_limit} کلیک) تمام شده. فردا دوباره امتحان کنید.\n\nوضعیت پلن: /myplan",
+            quote=True
+        )
+        return message.stop_propagation()
+
     # --- کد جدید: چک تاخیر برای کاربران رایگان ---
+    # فقط اگر کاربر پلن رایگان دارد و هنوز محدودیت روزانه‌اش تمام نشده
     plan = await database.get_user_plan(user_id)
-    if plan == "free":
+    if plan == "free" and daily_clicks < daily_limit:
         last_sent = user_last_sent.get(user_id, 0)
         current_time = time.time()
         delay = config.FREE_USER_DELAY
@@ -205,16 +216,6 @@ async def file_start(
         
         user_last_sent[user_id] = current_time
     # --- پایان کد جدید ---
-
-    # چک محدودیت کلیک روزانه قبل از ارسال
-    daily_clicks = await database.get_daily_clicks(user_id)
-    daily_limit = await database.get_daily_limit(user_id)
-    if daily_clicks >= daily_limit:
-        await message.reply(
-            f"⚠️ محدودیت روزانه شما ({daily_limit} کلیک) تمام شده. فردا دوباره امتحان کنید.\n\nوضعیت پلن: /myplan",
-            quote=True
-        )
-        return message.stop_propagation()
 
     if not file_document:
         try:
