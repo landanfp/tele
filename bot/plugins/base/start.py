@@ -15,6 +15,8 @@ from bot.utilities.schedule_manager import schedule_manager
 # from bot.plugins.base.set import ADMIN  # فیکس: حذف import ADMIN برای جلوگیری از cyclic import
 
 database = MongoDB()
+# دیکشنری برای ذخیره آخرین زمان ارسال فایل برای کاربران
+user_last_sent = {}
 
 
 class FileSender:
