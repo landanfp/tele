@@ -1,4 +1,8 @@
 # bot/plugins/base/start.py file :
+import asyncio
+import time
+from typing import Dict
+
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.enums import ChatMemberStatus
@@ -12,11 +16,11 @@ from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, 
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
 from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
-# from bot.plugins.base.set import ADMIN  # فیکس: حذف import ADMIN برای جلوگیری از cyclic import
 
 database = MongoDB()
-# دیکشنری برای ذخیره آخرین زمان ارسال فایل برای کاربران
-user_last_sent = {}
+
+# اضافه کردن این دیکشنری برای ذخیره زمان آخرین ارسال هر کاربر
+user_last_sent: Dict[int, float] = {}
 
 
 class FileSender:
@@ -115,7 +119,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     is_subscribed = True
     
     # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
-    if user_id not in config.ROOT_ADMINS_ID:  # فیکس: استفاده از config.ROOT_ADMINS_ID به جای ADMIN
+    if user_id not in config.ROOT_ADMINS_ID:
         if await database.is_user_banned(user_id):
              await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
              return
@@ -180,31 +184,27 @@ async def file_start(
 
     # shouldn't overwrite existing id it already exists
     await database.add_user(user_id=message.from_user.id)
-    # --- بخش جدید: اعمال تاخیر برای کاربران رایگان ---
-    plan = await database.get_user_plan(user_id)
-    if plan == "free":
-        last_sent = user_last_sent.get(user_id, 0)
-        current_time = asyncio.get_event_loop().time()
-        delay = config.FREE_USER_DELAY
-
-        if delay > 0:
-            # بررسی اختلاف زمانی
-            if current_time - last_sent < delay:
-                remaining_time = int(delay - (current_time - last_sent))
-                await message.reply_text(
-                    f"⏱️ **{remaining_time}** ثانیه دیگر می‌توانید فایل جدیدی دریافت کنید.",
-                    quote=True
-                )
-                return message.stop_propagation()
-
-        # اگر زمان سپری شده بود، تایمر را آپدیت می‌کنیم (قبل از پردازش سنگین)
-        user_last_sent[user_id] = current_time
-    # ----------------------------------------------------
 
     base64_file_link = message.text.split(maxsplit=1)[1]
     file_document = await database.get_link_document(base64_file_link=base64_file_link)
 
     user_id = message.from_user.id
+
+    # --- کد جدید: چک تاخیر برای کاربران رایگان ---
+    plan = await database.get_user_plan(user_id)
+    if plan == "free":
+        last_sent = user_last_sent.get(user_id, 0)
+        current_time = time.time()
+        delay = config.FREE_USER_DELAY
+        
+        if delay > 0:
+            if current_time - last_sent < delay:
+                remaining_time = int(delay - (current_time - last_sent))
+                await message.reply_text(f"⏱️ {remaining_time} ثانیه دیگر می‌توانید فایل جدیدی دریافت کنید.")
+                return message.stop_propagation()
+        
+        user_last_sent[user_id] = current_time
+    # --- پایان کد جدید ---
 
     # چک محدودیت کلیک روزانه قبل از ارسال
     daily_clicks = await database.get_daily_clicks(user_id)
