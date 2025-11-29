@@ -79,6 +79,10 @@ class Config(BaseSettings):
     PROTECT_CONTENT: bool = True 
     AUTO_GENERATE_LINK: bool = True
 
+    # --- NEW CONFIG ---
+    FREE_USER_DELAY: int = 30  # Delay in seconds for free users
+# ------------------
+
     # Injected Config
     channels_n_invite: dict[str, ChannelInfo] = {}
 
