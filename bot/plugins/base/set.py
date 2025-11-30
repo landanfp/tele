@@ -10,7 +10,6 @@ from bot.database import MongoDB
 from bot.options import options
 from bot.utilities.helpers import RateLimiter, PyroHelper
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 
 logger = logging.getLogger(__name__)
 database = MongoDB()
@@ -601,10 +600,3 @@ async def receive_input_value(client: Client, message: Message):
         logger.debug(f"User {user_id} is not awaiting any input, passing message: {message.text} (is_command: {bool(message.command)})")
         return message.continue_propagation()
 
-
-HelpCmd.set_help(
-    command="settings",
-    description="دسترسی به پنل تنظیمات ربات برای مدیریت ادمین‌ها و سایر تنظیمات.",
-    allow_global=False,
-    allow_non_admin=False,
-)
