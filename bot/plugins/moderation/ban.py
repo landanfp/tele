@@ -13,7 +13,6 @@ from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage
-from bot.utilities.pyrotools import HelpCmd
 from bot.utilities.pyrofilters import PyroFilters
 
 database = MongoDB()
@@ -127,9 +126,3 @@ async def ban_callback_handler(client: Client, callback_query: CallbackQuery):
         return
 
 
-HelpCmd.set_help(
-    command="ban",
-    description=ban_user.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
