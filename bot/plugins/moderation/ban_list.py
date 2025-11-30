@@ -8,7 +8,7 @@ from pyrogram.types import Message
 from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
-from bot.utilities.pyrotools import HelpCmd
+
 
 logger = logging.getLogger(__name__)
 database = MongoDB()
@@ -86,9 +86,4 @@ async def ban_list_handler(client: Client, message: Message) -> Message | None:
             await message.reply_document("ban_list.txt", caption="📜 لیست کاربران بن شده (متن طولانی بود)")
 
 
-HelpCmd.set_help(
-    command="ban_list",
-    description=ban_list_handler.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
+
