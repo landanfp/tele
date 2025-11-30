@@ -13,7 +13,7 @@ from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage
-from bot.utilities.pyrotools import HelpCmd
+
 
 database = MongoDB()
 
