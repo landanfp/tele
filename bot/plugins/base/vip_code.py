@@ -15,8 +15,8 @@ from bot.utilities.helpers.rate_limiter import RateLimiter
 logger = logging.getLogger(__name__)
 database = MongoDB()
 db = database
-VIP_PLAN_NAME = "vip_15days"  # 10 لینک روزانه، 15 روز
-VIP_PLAN_DURATION = 15  # روز
+VIP_PLAN_NAME = "vip_10days"  # 10 لینک روزانه، 15 روز
+VIP_PLAN_DURATION = 10  # روز
 LOG_CHANNEL = config.BACKUP_CHANNEL  # Assuming backup as log
 
 # فیکس: استفاده از PyroFilters.admin() به جای filters.user برای dynamic admins (sync با set.py)
