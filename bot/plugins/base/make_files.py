@@ -11,7 +11,7 @@ from bot.database import MongoDB
 from bot.options import options
 from bot.utilities.helpers import DataEncoder, RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage, PyroFilters
-from bot.utilities.pyrotools import HelpCmd
+
 
 
 class CacheEntry(TypedDict):
@@ -189,11 +189,3 @@ async def make_files_command_handler(client: Client, message: ConvoMessage) -> M
         return await MakeFilesCommand.handle_convo_stop(client=client, message=message, is_pro=is_pro)
     return None
 
-
-HelpCmd.set_help(
-    command="make_files",
-    description=make_files_command_handler.__doc__,
-    allow_global=True,
-    allow_non_admin=False,
-    alias=["/batch", "/batch_files", "/pro"],
-)
