@@ -9,7 +9,7 @@ from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import DataEncoder, RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage, PyroFilters
-from bot.utilities.pyrotools import HelpCmd
+
 
 database = MongoDB()
 
@@ -88,9 +88,3 @@ async def range_files(client: Client, message: ConvoMessage) -> Message | None:
     return await message.reply(text="Couldn't add files to database", quote=True)
 
 
-HelpCmd.set_help(
-    command="range_files",
-    description=range_files.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
