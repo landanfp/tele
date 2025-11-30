@@ -9,7 +9,7 @@ from bot.database import MongoDB
 from bot.options import options
 from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, RateLimiter
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
-from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
+from bot.utilities.pyrotools import FileResolverModel, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
 
 database = MongoDB()
@@ -313,9 +313,3 @@ async def return_start(
     )
 
 
-HelpCmd.set_help(
-    command="start",
-    description=file_start.__doc__,
-    allow_global=True,
-    allow_non_admin=True,
-)
