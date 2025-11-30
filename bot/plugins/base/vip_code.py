@@ -10,7 +10,6 @@ from pyrogram.types import Message
 from bot.config import config, DAILY_LINK_LIMITS
 from bot.database import MongoDB
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 from bot.utilities.helpers.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -135,17 +134,3 @@ async def redeem_vip_code(client: Client, message: Message):
     else:
         logger.warning(f"Invalid VIP code: {code}")
         await message.reply("کد وارد شده نامعتبر است.")
-
-# HelpCmd برای هر دو
-HelpCmd.set_help(
-    command="create_vip",
-    description="تولید کد VIP برای ادمین.",
-    allow_global=True,
-    allow_non_admin=False,
-)
-HelpCmd.set_help(
-    command="vip",
-    description="فعال‌سازی کد VIP برای کاربر: `/vip [کد]`",
-    allow_global=True,
-    allow_non_admin=True,
-)
