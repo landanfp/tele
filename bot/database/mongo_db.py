@@ -159,3 +159,8 @@ class MongoDB(Moderation, Listener):
 
         if unsuccessful_ids_codex:
             await self.db["users"].delete_many({"_id": {"$in": unsuccessful_ids_codex}})
+            # تغییرات در تابع add_file:
+    async def add_file(self, file_link: str, file_origin: int, file_data: list[dict[str, str | int]], pro_only: bool = False) -> bool:
+        # پارامتر جدید pro_only اضافه شده
+    # و در update عملیات:
+        "pro_only": pro_only,  # فیلد جدید در دیتابیس
