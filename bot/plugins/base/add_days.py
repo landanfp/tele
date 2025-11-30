@@ -7,7 +7,6 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 from bot.utilities.helpers.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -143,10 +142,3 @@ async def cancel_add_days(client: Client, callback_query: CallbackQuery):
         ADMIN_ADDING_DAYS.pop(user_id, None)
     else:
         await callback_query.answer("این درخواست منقضی شده است.", show_alert=True)
-
-HelpCmd.set_help(
-    command="add_day",
-    description="اضافه کردن تعداد روز به پلن‌های کاربران پرمیوم.",
-    allow_global=False,
-    allow_non_admin=False,
-)
