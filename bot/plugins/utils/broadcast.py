@@ -10,7 +10,6 @@ from pyrogram.types import Message
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 
 database = MongoDB()
 
@@ -132,9 +131,3 @@ async def broadcast(client: Client, message: Message) -> Message:
     )
 
 
-HelpCmd.set_help(
-    command="broadcast",
-    description=broadcast.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
