@@ -1,4 +1,3 @@
-# bot/plugins/base/start.py file :
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.enums import ChatMemberStatus
@@ -12,7 +11,6 @@ from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, 
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
 from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
-# from bot.plugins.base.set import ADMIN  # فیکس: حذف import ADMIN برای جلوگیری از cyclic import
 
 database = MongoDB()
 
@@ -28,7 +26,7 @@ class FileSender:
         codex_message_ids: list[int],
         chat_id: int,
         from_chat_id: int,
-        protect_content: bool,  # noqa: FBT001
+        protect_content: bool,
     ) -> list[Message]:
         all_sent_files = []
 
@@ -66,7 +64,7 @@ class FileSender:
         chat_id: int,
         file_data: list[FileResolverModel],
         file_origin: int,
-        protect_content: bool,  # noqa: FBT001
+        protect_content: bool,
     ) -> list[Message]:
         all_sent_files = []
 
@@ -100,8 +98,7 @@ class FileSender:
 @Client.on_callback_query(filters.regex("^check_sub$"))
 async def check_sub_callback(client: Client, callback: CallbackQuery):
     """
-    هندلر بررسی عضویت برای دکمه شیشه‌ای (مخصوص استارت خالی).
-    اگر کاربر عضو شده باشد، پیام قفل را حذف کرده و پیام استارت را می‌فرستد.
+    Handler for subscription check button.
     """
     user_id = callback.from_user.id
     status = [
@@ -112,8 +109,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     
     is_subscribed = True
     
-    # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
-    if user_id not in config.ROOT_ADMINS_ID:  # فیکس: استفاده از config.ROOT_ADMINS_ID به جای ADMIN
+    if user_id not in config.ROOT_ADMINS_ID:
         if await database.is_user_banned(user_id):
              await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
              return
@@ -140,17 +136,14 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
                             is_subscribed = False
                             break
             except Exception:
-                 # در صورت بروز خطا فرض را بر عدم عضویت می‌گذاریم
                  is_subscribed = False
 
     if is_subscribed:
-        # 1. حذف پیام جوین اجباری
         await callback.message.delete()
         
-        # 2. ارسال پیام استارت (خوش‌آمدگویی)
         await PyroHelper.option_message(
             client=client,
-            message=callback.message, # استفاده از کانتکست پیام قبلی
+            message=callback.message,
             option_key=options.settings.START_MESSAGE
         )
     else:
@@ -168,15 +161,11 @@ async def file_start(
 ) -> Message:
     """
     Handle start command, it returns files if a link is included otherwise sends the user a request.
-
-    **Usage:**
-        /start [optional file_link]
     """
     if not message.command[1:]:
         await PyroHelper.option_message(client=client, message=message, option_key=options.settings.START_MESSAGE)
         return message.stop_propagation()
 
-    # shouldn't overwrite existing id it already exists
     await database.add_user(user_id=message.from_user.id)
 
     base64_file_link = message.text.split(maxsplit=1)[1]
@@ -184,21 +173,18 @@ async def file_start(
 
     user_id = message.from_user.id
 
-    # چک کردن لینک‌های مخصوص پرمیوم
+    # Check for premium-only links
     if file_document and file_document.get("pro_only"):
         user_plan = await database.get_user_plan(user_id)
-        # لیست پلن‌های غیر پرمیوم
         non_premium_plans = ["free", "gift_7days", "vip_15days"]
         
         if user_plan in non_premium_plans:
-            await PyroHelper.option_message(
-                client=client,
-                message=message,
-                option_key=options.settings.PRO_ONLY_MESSAGE,
+            await message.reply(
+                text="این فایل ویژه کاربران پرمیوم است. لطفا پلن خود را ارتقا دهید",
+                quote=True,
             )
             return message.stop_propagation()
 
-    # چک محدودیت کلیک روزانه قبل از ارسال
     daily_clicks = await database.get_daily_clicks(user_id)
     daily_limit = await database.get_daily_limit(user_id)
     if daily_clicks >= daily_limit:
@@ -248,7 +234,6 @@ async def file_start(
             protect_content=config.PROTECT_CONTENT,
         )
 
-    # افزایش تعداد کلیک/دانلود فقط بعد از ارسال موفق
     await database.increase_daily_clicks(user_id)
 
     delete_n_seconds = options.settings.AUTO_DELETE_SECONDS
@@ -312,17 +297,13 @@ async def return_start(
     for channel, channel_info in channels_n_invite.items():
         buttons.append([InlineKeyboardButton(text=channel, url=channel_info["invite_link"])])
 
-    # --- بخش اصلاح شده ---
     start_arg = message.command[1] if len(message.command) > 1 else ""
     
     if start_arg:
-        # اگر لینک فایل باشد، دکمه باید لینک باشد تا کاربر فایل را بگیرد
-        link = f"https://t.me/{client.me.username}?start={start_arg}"  # type: ignore[reportOptionalMemberAccess]
+        link = f"https://t.me/{client.me.username}?start={start_arg}"
         buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
     else:
-        # اگر استارت خالی باشد، دکمه Callback می‌سازیم تا پیام قبلی را حذف کند
         buttons.append([InlineKeyboardButton(text="✅ عضو شدم", callback_data="check_sub")])
-    # ---------------------
 
     return await PyroHelper.option_message(
         client=client,
