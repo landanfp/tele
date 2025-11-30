@@ -5,7 +5,6 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 
 from bot.database import MongoDB
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 import logging
 
 logger = logging.getLogger(__name__)
@@ -120,16 +119,3 @@ async def delete_used_codes_handler(client: Client, callback_query: CallbackQuer
         await callback_query.answer("❌ خطا در حذف. لاگ‌ها را چک کنید.", show_alert=True)
         logger.error(f"Error in delete_used_codes: {e}")
 
-HelpCmd.set_help(
-    command="add_change",
-    description="اضافه کردن کد VIP جدید به لیست: /add_change {code}",
-    allow_global=False,
-    allow_non_admin=False,
-)
-
-HelpCmd.set_help(
-    command="change_list",
-    description="نمایش لیست کدهای VIP (وضعیت استفاده)",
-    allow_global=False,
-    allow_non_admin=False,
-)
