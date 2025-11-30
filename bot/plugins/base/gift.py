@@ -11,7 +11,6 @@ from bot.config import config, DAILY_LINK_LIMITS
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 
 database = MongoDB()
 db = database
@@ -201,9 +200,3 @@ async def handle_phone_share(client: Client, message: Message) -> None:
             print(f"DEBUG: Error sending final error message: {final_reply_e}")
 
 
-HelpCmd.set_help(
-    command="gift",
-    description="فعال‌سازی پلن هدیه 7 روزه (فقط برای کاربران رایگان، با تأیید شماره).",
-    allow_global=True,
-    allow_non_admin=True,
-)
