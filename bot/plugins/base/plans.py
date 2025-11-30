@@ -6,7 +6,6 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 from bot.config import config, DAILY_LINK_LIMITS
 from bot.database import MongoDB
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
 from bot.utilities.helpers.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -274,24 +273,3 @@ async def delete_premium_yes(client: Client, callback_query: CallbackQuery):
 async def delete_premium_no(client: Client, callback_query: CallbackQuery):
     user_id = int(callback_query.matches[0].group(1))
     await callback_query.edit_message_text(f"❌ عملیات حذف پلن ویژه برای کاربر با آیدی `{user_id}` لغو شد.")
-
-HelpCmd.set_help(
-    command="myplan",
-    description="نمایش وضعیت پلن فعلی کاربر (تعداد کلیک/دانلود).",
-    allow_global=True,
-    allow_non_admin=True,
-)
-
-HelpCmd.set_help(
-    command="addpremium",
-    description="ارتقا پلن کاربر به سطوح روزانه/هفتگی/ماهانه.",
-    allow_global=False,
-    allow_non_admin=False,
-)
-
-HelpCmd.set_help(
-    command="delete_premium",
-    description="حذف پلن پریمیوم کاربر و بازگشت به رایگان.",
-    allow_global=False,
-    allow_non_admin=False,
-)
