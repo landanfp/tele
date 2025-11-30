@@ -3,7 +3,7 @@ from pyrogram.client import Client
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from bot.utilities.helpers import RateLimiter
-from bot.utilities.pyrotools import HelpCmd
+
 
 
 @Client.on_message(
@@ -27,10 +27,3 @@ async def privacy(_: Client, message: Message) -> Message:
         ),
     )
 
-
-HelpCmd.set_help(
-    command="privacy",
-    description=privacy.__doc__,
-    allow_global=True,
-    allow_non_admin=True,
-)
