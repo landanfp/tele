@@ -8,7 +8,6 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 
 from bot.database import MongoDB
 from bot.config import config  # برای LOG_CHANNEL
-from bot.utilities.pyrotools import HelpCmd
 
 database = MongoDB()
 
@@ -196,9 +195,3 @@ async def handle_gifi_click(client: Client, callback_query: CallbackQuery):
         if is_markup_different(msg.reply_markup, final_markup):
             await msg.edit_reply_markup(reply_markup=final_markup)
 
-HelpCmd.set_help(
-    command="gifi",
-    description="بازی حدس جایزه: یکی از دکمه‌ها جایزه داره، پیداش کن! (۱ تلاش داری، هر ۱۲ ساعت یکبار)",
-    allow_global=True,
-    allow_non_admin=True,
-)
