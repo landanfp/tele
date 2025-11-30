@@ -1,4 +1,3 @@
-# farshidband 
 import dns.resolver
 from async_lru import alru_cache
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -13,17 +12,11 @@ from .moderation import Moderation
 class MongoDB(Moderation, Listener):
     """
     A class representing a MongoDB database connection.
-
-    Parameters:
-        name (str | None): The name of the database to connect to. Defaults to config.MONGO_DB_NAME.
     """
 
     def __init__(self, name: str | None = None) -> None:
         """
         Initializes the MongoDB connection.
-
-        Raises:
-            ConfigurationError: If the MongoDB connection configuration is invalid.
         """
         try:
             self.client = AsyncIOMotorClient(host=str(config.MONGO_DB_URL))
@@ -37,12 +30,6 @@ class MongoDB(Moderation, Listener):
     async def add_user(self, user_id: int) -> bool:
         """
         Adds a user to the database.
-
-        Parameters:
-            user_id (int): The ID of the user to add.
-
-        Returns:
-            bool: Whether the user was added successfully.
         """
         collection = self.db["Users"]
         result = await collection.update_one(
@@ -52,17 +39,9 @@ class MongoDB(Moderation, Listener):
         )
         return result.acknowledged
 
-    async def add_file(self, file_link: str, file_origin: int, file_data: list[dict[str, str | int]]) -> bool:
+    async def add_file(self, file_link: str, file_origin: int, file_data: list[dict[str, str | int]], pro_only: bool = False) -> bool:
         """
         Adds a file to the database.
-
-        Parameters:
-            file_link (str): The link to the file.
-            file_origin (int): The origin of the file.
-            file_data (list[dict]): The data associated with the file.
-
-        Returns:
-            bool: Whether the file was added successfully.
         """
         collection = self.db["Files"]
         result = await collection.update_one(
@@ -71,6 +50,7 @@ class MongoDB(Moderation, Listener):
                 "$set": {
                     "file_origin": file_origin,
                     "files": file_data,
+                    "pro_only": pro_only,
                 },
             },
             upsert=True,
@@ -80,12 +60,6 @@ class MongoDB(Moderation, Listener):
     async def delete_link_document(self, base64_file_link: str) -> bool:
         """
         Deletes a link document from the database.
-
-        Parameters:
-            base64_file_link (str): The base64-encoded link to the file.
-
-        Returns:
-            bool: Whether the document was deleted successfully.
         """
         collection = self.db["Files"]
         result = await collection.delete_one(
@@ -96,12 +70,6 @@ class MongoDB(Moderation, Listener):
     async def get_link_document(self, base64_file_link: str) -> dict | None:
         """
         Retrieves a link document from the database.
-
-        Parameters:
-            base64_file_link (str): The base64-encoded link to the file.
-
-        Returns:
-            dict | None: The document associated with the link, or None if not found.
         """
         collection = self.db["Files"]
         pipeline = [{"$match": {"_id": base64_file_link}}]
@@ -112,9 +80,6 @@ class MongoDB(Moderation, Listener):
     async def get_user_ids(self) -> tuple[list[int], list[int]]:
         """
         Retrieves the IDs of all users in the database.
-
-        Returns:
-            tuple[list[int], list[int]]: A tuple containing two lists of user IDs.
         """
         pipeline = [
             {"$project": {"_id": 1}},
@@ -139,9 +104,6 @@ class MongoDB(Moderation, Listener):
     async def stats(self) -> tuple[int, int]:
         """
         Retrieves the number of links and users in the database.
-
-        Returns:
-            tuple[int, int]: A tuple containing the number of links and users.
         """
         link_count = await self.db["Files"].count_documents({})
         users_count = await self.db["Users"].count_documents({})
@@ -150,18 +112,9 @@ class MongoDB(Moderation, Listener):
     async def cleanup_users(self, unsuccessful_ids: list, unsuccessful_ids_codex: list) -> None:
         """
         Cleans up users from the database based on their IDs.
-
-        Parameters:
-            unsuccessful_ids (list): List of user IDs to delete from the database.
-            unsuccessful_ids_codex (list): List of user IDs to delete from the CodeXbotz database.
         """
         if unsuccessful_ids:
             await self.db["Users"].delete_many({"_id": {"$in": unsuccessful_ids}})
 
         if unsuccessful_ids_codex:
             await self.db["users"].delete_many({"_id": {"$in": unsuccessful_ids_codex}})
-            # تغییرات در تابع add_file:
-    async def add_file(self, file_link: str, file_origin: int, file_data: list[dict[str, str | int]], pro_only: bool = False) -> bool:
-        # پارامتر جدید pro_only اضافه شده
-    # و در update عملیات:
-        "pro_only": pro_only,  # فیلد جدید در دیتابیس
