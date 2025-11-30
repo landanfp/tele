@@ -8,7 +8,7 @@ from bot.config import config
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import FileResolverModel, HelpCmd
+from bot.utilities.pyrotools import FileResolverModel
 
 database = MongoDB()
 
@@ -46,10 +46,3 @@ async def delete_link(client: Client, message: Message) -> Message:
 
     return await message.reply(text=f">**✅ لینک موردنظر با موفقیت از دیتابیس حذف شد.**\n `{base64_file_link}`", quote=True)
 
-
-HelpCmd.set_help(
-    command="delete_link",
-    description=delete_link.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
