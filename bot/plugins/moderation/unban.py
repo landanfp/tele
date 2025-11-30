@@ -131,9 +131,3 @@ async def unban_callback_handler(client: Client, callback_query: CallbackQuery):
         return
 
 
-HelpCmd.set_help(
-    command="unban",
-    description=unban_user.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
