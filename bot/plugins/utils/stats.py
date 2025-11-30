@@ -5,7 +5,7 @@ from pyrogram.types import Message
 from bot.database import MongoDB
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
+
 
 database = MongoDB()
 
@@ -26,9 +26,3 @@ async def stats(_: Client, message: Message) -> Message:
     return await message.reply(f">STATS:\n**Users Count:** `{users_count}`\n**Links Count:** `{link_count}`")
 
 
-HelpCmd.set_help(
-    command="stats",
-    description=stats.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-)
