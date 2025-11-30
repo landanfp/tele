@@ -72,6 +72,7 @@ class Config(BaseSettings):
     # Bot main config
     RATE_LIMITER: bool = True
     BACKUP_CHANNEL: int
+    BACKUP_CHANNEL2: int  # اضافه کردن کانال دوم برای فایل‌های پرمیوم
     ROOT_ADMINS_ID: list[int] = list(int(x) for x in os.environ.get("ROOT_ADMINS_ID", "763990585 705518424").split())  # فیکس: type annotation اضافه شد
     FORCE_SUB_CHANNELS: list[int] = list(int(x) for x in os.environ.get("FORCE_SUB_CHANNELS", "").split()) #-1001208480573
 
