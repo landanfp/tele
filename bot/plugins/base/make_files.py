@@ -1,4 +1,3 @@
-# bot/plugins/base/make_files.py file :
 import asyncio
 import uuid
 from typing import Any, ClassVar, TypedDict
@@ -12,6 +11,7 @@ from bot.database import MongoDB
 from bot.options import options
 from bot.utilities.helpers import DataEncoder, RateLimiter
 from bot.utilities.pyrofilters import ConvoMessage, PyroFilters
+from bot.utilities.pyrotools import HelpCmd
 
 
 class CacheEntry(TypedDict):
@@ -29,17 +29,9 @@ class MakeFilesCommand:
 
     @staticmethod
     @RateLimiter.hybrid_limiter(func_count=1)
-    async def message_reply(client: Client, message: Message, **kwargs: Any) -> Message:  # noqa: ANN401, ARG004
+    async def message_reply(client: Client, message: Message, **kwargs: Any) -> Message:
         """
         Replies to a message with rate limiter.
-
-        Parameters:
-            client (Client): The client instance.
-            message (Message): The message to reply to.
-            **kwargs (Any): Additional keyword arguments for the reply.
-
-        Returns:
-            Message: The replied message.
         """
         return await message.reply(**kwargs)
 
@@ -47,13 +39,6 @@ class MakeFilesCommand:
     async def handle_convo_start(cls, client: Client, message: ConvoMessage) -> Message:
         """
         Handle conversation start.
-
-        Parameters:
-            client (Client): The client instance.
-            message (ConvoMessage): The conversation message.
-
-        Returns:
-            Message: The replied message.
         """
         unique_id = message.chat.id + message.from_user.id
         cls.files_cache.setdefault(unique_id, {"files": [], "counter": 0})
@@ -62,16 +47,7 @@ class MakeFilesCommand:
     @classmethod
     async def handle_conversation(cls, client: Client, message: ConvoMessage) -> Message | None:
         """
-        Handle conversations and file uploads. Maintain file cache for optimization.
-        Process burst files, responding only when complete.
-
-
-        Parameters:
-            client (Client): The client instance.
-            message (ConvoMessage): The conversation message.
-
-        Returns:
-            Message or None: The replied message or None if burst is triggered.
+        Handle conversations and file uploads.
         """
         unique_id = message.chat.id + message.from_user.id
         file_type = message.document or message.video or message.photo or message.audio or message.sticker
@@ -111,17 +87,6 @@ class MakeFilesCommand:
     async def handle_convo_stop(cls, client: Client, message: ConvoMessage, is_pro: bool = False) -> Message:
         """
         Handle the end of conversation.
-
-        This finalizes the conversation by:
-        - Checking if any files were uploaded.
-        - Optionally forwarding files to a backup channel.
-        - Storing file information in a database.
-        - Generating and sending a link to access the files.
-
-        Parameters:
-            client (Client): The client instance.
-            message (ConvoMessage): The conversation message.
-            is_pro (bool): Whether this is a pro-only link.
         """
         forward_limit_size = 100
         unique_id = message.chat.id + message.from_user.id
@@ -141,13 +106,12 @@ class MakeFilesCommand:
 
         files_to_store = []
         
-        # انتخاب کانال پشتیبان بر اساس نوع لینک
         backup_channel = config.BACKUP_CHANNEL2 if is_pro else config.BACKUP_CHANNEL
         
         if options.settings.BACKUP_FILES:
             for user_cache in user_cache_chunk:
                 forwarded_messages = await client.forward_messages(
-                    chat_id=backup_channel,  # استفاده از کانال مناسب
+                    chat_id=backup_channel,
                     from_chat_id=message.chat.id,
                     message_ids=user_cache,
                     hide_sender_name=True,
@@ -163,7 +127,6 @@ class MakeFilesCommand:
                         },
                     )
         else:
-            # Create a copy of the files cache, excluding the 'file_name' field from each file CacheEntry.
             files_to_store = [
                 {k: v for k, v in i.items() if k != "file_name"} for i in cls.files_cache[unique_id]["files"]
             ]
@@ -171,10 +134,8 @@ class MakeFilesCommand:
         unique_link = f"{uuid.uuid4().int}"
         file_link = DataEncoder.encode_data(unique_link)
         
-        # file_origin هم باید با کانال مناسب تنظیم شود
         file_origin = backup_channel if options.settings.BACKUP_FILES else message.chat.id
 
-        # اضافه کردن پارامتر pro_only
         add_file = await cls.database.add_file(
             file_link=file_link, 
             file_origin=file_origin, 
@@ -185,12 +146,11 @@ class MakeFilesCommand:
         cls.files_cache.pop(unique_id)
 
         if add_file:
-            link = f"https://t.me/{client.me.username}?start={file_link}"  # type: ignore[reportOptionalMemberAccess]
+            link = f"https://t.me/{client.me.username}?start={file_link}"
             reply_markup = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Share URL", url=f"https://t.me/share/url?url={link}")]],
             )
 
-            # اضافه کردن پیام متفاوت برای لینک‌های pro
             link_type_text = "**پرمیوم** " if is_pro else ""
             return await cls.message_reply(
                 client=client,
@@ -209,7 +169,7 @@ class MakeFilesCommand:
     & PyroFilters.subscription()
     & PyroFilters.create_conversation_filter(
         convo_start=["/make_files", "/batch", "/batch_files"],
-        convo_stop=["/make_link", "/batch_link", "/pro"],  # اضافه کردن /pro
+        convo_stop=["/make_link", "/batch_link", "/pro"],
     ),
 )
 async def make_files_command_handler(client: Client, message: ConvoMessage) -> Message | None:
@@ -225,7 +185,15 @@ async def make_files_command_handler(client: Client, message: ConvoMessage) -> M
     if message.conversation:
         return await MakeFilesCommand.handle_conversation(client=client, message=message)
     if message.convo_stop:
-        # تشخیص اینکه آیا کاربر از /pro استفاده کرده یا /make_link
         is_pro = message.text and message.text.strip() == "/pro"
         return await MakeFilesCommand.handle_convo_stop(client=client, message=message, is_pro=is_pro)
     return None
+
+
+HelpCmd.set_help(
+    command="make_files",
+    description=make_files_command_handler.__doc__,
+    allow_global=True,
+    allow_non_admin=False,
+    alias=["/batch", "/batch_files", "/pro"],
+)
