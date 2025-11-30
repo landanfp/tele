@@ -1,4 +1,3 @@
-# bot/options.py file :
 from pydantic import BaseModel
 
 from bot.database import MongoDB
@@ -34,7 +33,6 @@ class SettingsModel(BaseModel):
     AUTO_DELETE_MESSAGE: str | int = "This file(s) will be deleted within {} minutes"
     INVALID_LINK_MESSAGE: str | int = "Attempted to resolve link: Got invalid link."
     FILE_DOES_NOT_EXIST: str | int = "Attempted to fetch files: Does not exist."
-    PRO_ONLY_MESSAGE: str | int = "این فایل ویژه کاربران پرمیوم است. لطفا پلن خود را ارتقا دهید"
 
     AUTO_DELETE_SECONDS: int = 300
     GLOBAL_MODE: bool = False
