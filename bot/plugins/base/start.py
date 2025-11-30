@@ -1,8 +1,4 @@
 # bot/plugins/base/start.py file :
-import asyncio
-import time
-from typing import Dict
-
 from pyrogram import filters
 from pyrogram.client import Client
 from pyrogram.enums import ChatMemberStatus
@@ -14,13 +10,11 @@ from bot.database import MongoDB
 from bot.options import options
 from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, RateLimiter
 from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
-from bot.utilities.pyrotools import FileResolverModel, Pyrotools
+from bot.utilities.pyrotools import FileResolverModel, HelpCmd, Pyrotools
 from bot.utilities.schedule_manager import schedule_manager
+# from bot.plugins.base.set import ADMIN  # فیکس: حذف import ADMIN برای جلوگیری از cyclic import
 
 database = MongoDB()
-
-# اضافه کردن این دیکشنری برای ذخیره زمان آخرین ارسال هر کاربر
-user_last_sent: Dict[int, float] = {}
 
 
 class FileSender:
@@ -119,7 +113,7 @@ async def check_sub_callback(client: Client, callback: CallbackQuery):
     is_subscribed = True
     
     # بررسی ادمین نبودن (ادمین‌ها همیشه مجازند)
-    if user_id not in config.ROOT_ADMINS_ID:
+    if user_id not in config.ROOT_ADMINS_ID:  # فیکس: استفاده از config.ROOT_ADMINS_ID به جای ADMIN
         if await database.is_user_banned(user_id):
              await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
              return
@@ -190,7 +184,21 @@ async def file_start(
 
     user_id = message.from_user.id
 
-    # چک محدودیت کلیک روزانه قبل از ارسال (اول این را چک می‌کنیم)
+    # چک کردن لینک‌های مخصوص پرمیوم
+    if file_document and file_document.get("pro_only"):
+        user_plan = await database.get_user_plan(user_id)
+        # لیست پلن‌های غیر پرمیوم
+        non_premium_plans = ["free", "gift_7days", "vip_15days"]
+        
+        if user_plan in non_premium_plans:
+            await PyroHelper.option_message(
+                client=client,
+                message=message,
+                option_key=options.settings.PRO_ONLY_MESSAGE,
+            )
+            return message.stop_propagation()
+
+    # چک محدودیت کلیک روزانه قبل از ارسال
     daily_clicks = await database.get_daily_clicks(user_id)
     daily_limit = await database.get_daily_limit(user_id)
     if daily_clicks >= daily_limit:
@@ -199,23 +207,6 @@ async def file_start(
             quote=True
         )
         return message.stop_propagation()
-
-    # --- کد جدید: چک تاخیر برای کاربران رایگان ---
-    # فقط اگر کاربر پلن رایگان دارد و هنوز محدودیت روزانه‌اش تمام نشده
-    plan = await database.get_user_plan(user_id)
-    if plan == "free" and daily_clicks < daily_limit:
-        last_sent = user_last_sent.get(user_id, 0)
-        current_time = time.time()
-        delay = config.FREE_USER_DELAY
-        
-        if delay > 0:
-            if current_time - last_sent < delay:
-                remaining_time = int(delay - (current_time - last_sent))
-                await message.reply_text(f"⏱️ {remaining_time} ثانیه دیگر می‌توانید فایل جدیدی دریافت کنید.")
-                return message.stop_propagation()
-        
-        user_last_sent[user_id] = current_time
-    # --- پایان کد جدید ---
 
     if not file_document:
         try:
@@ -340,3 +331,10 @@ async def return_start(
         reply_markup=InlineKeyboardMarkup(buttons),
     )
 
+
+HelpCmd.set_help(
+    command="start",
+    description=file_start.__doc__,
+    allow_global=True,
+    allow_non_admin=True,
+)
