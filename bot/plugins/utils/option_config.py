@@ -8,7 +8,7 @@ from bot.config import config
 from bot.options import InvalidValueError, options
 from bot.utilities.helpers import RateLimiter
 from bot.utilities.pyrofilters import PyroFilters
-from bot.utilities.pyrotools import HelpCmd
+
 
 MISSING_ARGUMENT = 2
 BOOLEN_CONVERT = {"true": True, "false": False}
@@ -77,11 +77,3 @@ async def option_config_cmd(client: Client, message: Message) -> Message | None:
 
     return final_message
 
-
-HelpCmd.set_help(
-    command="option",
-    description=option_config_cmd.__doc__,
-    allow_global=False,
-    allow_non_admin=False,
-    alias=["settings"],
-)
