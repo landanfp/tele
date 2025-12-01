@@ -1,0 +1,338 @@
+# start.py file version 2 :
+import asyncio
+import time
+from typing import Dict
+
+from pyrogram import filters
+from pyrogram.client import Client
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import UserNotParticipant
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+
+from bot.config import config
+from bot.database import MongoDB
+from bot.options import options
+from bot.utilities.helpers import DataEncoder, DataValidationError, PyroHelper, RateLimiter
+from bot.utilities.pyrofilters import PyroFilters, SubscriptionMessage
+from bot.utilities.pyrotools import FileResolverModel, Pyrotools
+from bot.utilities.schedule_manager import schedule_manager
+
+database = MongoDB()
+
+# اضافه کردن این دیکشنری برای ذخیره زمان آخرین ارسال هر کاربر (از version 1)
+user_last_sent: Dict[int, float] = {}
+
+
+class FileSender:
+    """Used to manage file sending functions between codexbotz and teleshare."""
+
+    forward_limit_size = 100
+
+    @staticmethod
+    async def codexbotz(
+        client: Client,
+        codex_message_ids: list[int],
+        chat_id: int,
+        from_chat_id: int,
+        protect_content: bool,
+    ) -> list[Message]:
+        all_sent_files = []
+
+        if len(codex_message_ids) == 1:
+            send_files = await client.copy_message(
+                chat_id=chat_id,
+                from_chat_id=from_chat_id,
+                message_id=codex_message_ids[0],
+                protect_content=protect_content,
+            )
+
+            all_sent_files.append(send_files)
+
+        else:
+            codex_message_ids_chunk = [
+                codex_message_ids[i : i + FileSender.forward_limit_size]
+                for i in range(0, len(codex_message_ids), FileSender.forward_limit_size)
+            ]
+
+            for codex_files in codex_message_ids_chunk:
+                send_files = await client.forward_messages(
+                    chat_id=chat_id,
+                    from_chat_id=from_chat_id,
+                    message_ids=codex_files,
+                    hide_sender_name=True,
+                    protect_content=protect_content,
+                )
+                all_sent_files.extend(send_files) if isinstance(send_files, list) else all_sent_files.append(send_files)
+
+        return all_sent_files
+
+    @staticmethod
+    async def teleshare(
+        client: Client,
+        chat_id: int,
+        file_data: list[FileResolverModel],
+        file_origin: int,
+        protect_content: bool,
+    ) -> list[Message]:
+        all_sent_files = []
+
+        if len(file_data) == 1:
+            send_files = await Pyrotools.send_media(
+                client=client,
+                chat_id=chat_id,
+                file_data=file_data[0],
+                file_origin=file_origin,
+                protect_content=protect_content,
+            )
+            all_sent_files.append(send_files)
+        else:
+            file_data_chunk = [
+                file_data[i : i + FileSender.forward_limit_size]
+                for i in range(0, len(file_data), FileSender.forward_limit_size)
+            ]
+
+            for i_file_data in file_data_chunk:
+                send_files = await Pyrotools.send_media_manager(
+                    client=client,
+                    chat_id=chat_id,
+                    file_data=i_file_data,
+                    file_origin=file_origin,
+                    protect_content=protect_content,
+                )
+                all_sent_files.extend(send_files) if isinstance(send_files, list) else all_sent_files.append(send_files)
+        return all_sent_files
+
+
+@Client.on_callback_query(filters.regex("^check_sub$"))
+async def check_sub_callback(client: Client, callback: CallbackQuery):
+    """
+    Handler for subscription check button.
+    """
+    user_id = callback.from_user.id
+    status = [
+        ChatMemberStatus.OWNER,
+        ChatMemberStatus.ADMINISTRATOR,
+        ChatMemberStatus.MEMBER,
+    ]
+    
+    is_subscribed = True
+    
+    if user_id not in config.ROOT_ADMINS_ID:
+        if await database.is_user_banned(user_id):
+             await callback.answer("🚫 شما از استفاده از ربات محروم هستید.", show_alert=True)
+             return
+
+        if config.FORCE_SUB_CHANNELS:
+            try:
+                joined_request_channel = await database.user_requested_channels(user_id)
+
+                for channel_info in config.channels_n_invite.values():
+                    channel_is_private = channel_info["is_private"]
+                    channel_id = channel_info["channel_id"]
+
+                    if channel_is_private and channel_id not in joined_request_channel:
+                        is_subscribed = False
+                        break
+
+                    if not channel_is_private:
+                        try:
+                            member = await client.get_chat_member(chat_id=channel_id, user_id=user_id)
+                            if member.status not in status:
+                                is_subscribed = False
+                                break
+                        except UserNotParticipant:
+                            is_subscribed = False
+                            break
+            except Exception:
+                 is_subscribed = False
+
+    if is_subscribed:
+        await callback.message.delete()
+        
+        await PyroHelper.option_message(
+            client=client,
+            message=callback.message,
+            option_key=options.settings.START_MESSAGE
+        )
+    else:
+        await callback.answer("❌ هنوز در کانال‌های مورد نظر عضو نشده‌اید!", show_alert=True)
+
+
+@Client.on_message(
+    filters.command("start") & filters.private & PyroFilters.subscription(),
+    group=0,
+)
+@RateLimiter.hybrid_limiter(func_count=1)
+async def file_start(
+    client: Client,
+    message: Message,
+) -> Message:
+    """
+    Handle start command, it returns files if a link is included otherwise sends the user a request.
+    """
+    if not message.command[1:]:
+        await PyroHelper.option_message(client=client, message=message, option_key=options.settings.START_MESSAGE)
+        return message.stop_propagation()
+
+    await database.add_user(user_id=message.from_user.id)
+
+    base64_file_link = message.text.split(maxsplit=1)[1]
+    file_document = await database.get_link_document(base64_file_link=base64_file_link)
+
+    user_id = message.from_user.id
+
+    # Check for premium-only links
+    if file_document and file_document.get("pro_only"):
+        user_plan = await database.get_user_plan(user_id)
+        non_premium_plans = ["free", "gift_7days", "vip_15days"]
+        
+        if user_plan in non_premium_plans:
+            await message.reply(
+                text="این فایل ویژه کاربران پرمیوم است. لطفا پلن خود را ارتقا دهید",
+                quote=True,
+            )
+            return message.stop_propagation()
+
+    daily_clicks = await database.get_daily_clicks(user_id)
+    daily_limit = await database.get_daily_limit(user_id)
+    if daily_clicks >= daily_limit:
+        await message.reply(
+            f"⚠️ محدودیت روزانه شما ({daily_limit} کلیک) تمام شده. فردا دوباره امتحان کنید.\n\nوضعیت پلن: /myplan",
+            quote=True
+        )
+        return message.stop_propagation()
+
+    # --- کد جدید: چک تاخیر برای کاربران رایگان (اضافه شده از version 1) ---
+    # فقط اگر کاربر پلن رایگان دارد و هنوز محدودیت روزانه‌اش تمام نشده
+    plan = await database.get_user_plan(user_id)
+    if plan == "free" and daily_clicks < daily_limit:
+        last_sent = user_last_sent.get(user_id, 0)
+        current_time = time.time()
+        delay = config.FREE_USER_DELAY
+        
+        if delay > 0:
+            if current_time - last_sent < delay:
+                remaining_time = int(delay - (current_time - last_sent))
+                await message.reply_text(f"⏱️ {remaining_time} ثانیه دیگر می‌توانید فایل جدیدی دریافت کنید.")
+                return message.stop_propagation()
+        
+        user_last_sent[user_id] = current_time
+    # --- پایان کد جدید ---
+
+    if not file_document:
+        try:
+            codex_message_ids = DataEncoder.codex_decode(
+                base64_string=base64_file_link,
+                backup_channel=config.BACKUP_CHANNEL,
+            )
+        except (DataValidationError, IndexError):
+            await PyroHelper.option_message(
+                client=client,
+                message=message,
+                option_key=options.settings.INVALID_LINK_MESSAGE,
+            )
+            return message.stop_propagation()
+
+        send_files = await FileSender.codexbotz(
+            client=client,
+            codex_message_ids=codex_message_ids,
+            chat_id=message.chat.id,
+            from_chat_id=config.BACKUP_CHANNEL,
+            protect_content=config.PROTECT_CONTENT,
+        )
+        if not send_files:
+            await PyroHelper.option_message(
+                client=client,
+                message=message,
+                option_key=options.settings.FILE_DOES_NOT_EXIST,
+            )
+            return message.stop_propagation()
+    else:
+        file_origin = file_document["file_origin"]
+        file_data = [FileResolverModel(**file) for file in file_document["files"]]
+
+        send_files = await FileSender.teleshare(
+            client=client,
+            chat_id=message.chat.id,
+            file_data=file_data,
+            file_origin=file_origin,
+            protect_content=config.PROTECT_CONTENT,
+        )
+
+    await database.increase_daily_clicks(user_id)
+
+    delete_n_seconds = options.settings.AUTO_DELETE_SECONDS
+
+    additional_message = None
+    if options.settings.ADDITIONAL_MESSAGE != 0:
+        additional_message = await PyroHelper.option_message(
+            client=client,
+            message=message,
+            option_key=options.settings.ADDITIONAL_MESSAGE,
+        )
+
+    if delete_n_seconds != 0:
+        schedule_delete_message = [msg.id for msg in send_files]
+
+        auto_delete_message = (
+            options.settings.AUTO_DELETE_MESSAGE.format(int(delete_n_seconds / 60))
+            if not isinstance(options.settings.AUTO_DELETE_MESSAGE, int)
+            else options.settings.AUTO_DELETE_MESSAGE
+        )
+        auto_delete_message_reply = await PyroHelper.option_message(
+            client=client,
+            message=message,
+            option_key=auto_delete_message,
+        )
+        schedule_delete_message.append(auto_delete_message_reply.id)
+
+        if additional_message:
+            schedule_delete_message.append(additional_message.id)
+
+        await schedule_manager.schedule_delete(
+            client=client,
+            chat_id=message.chat.id,
+            message_ids=schedule_delete_message,
+            delete_n_seconds=delete_n_seconds,
+        )
+
+    return message.stop_propagation()
+
+
+@Client.on_message(filters.command("start") & filters.private, group=69)
+@RateLimiter.hybrid_limiter(func_count=1)
+async def return_start(
+    client: Client,
+    message: SubscriptionMessage,
+) -> Message | None:
+    """
+    Handle start command without files or not subscribed.
+    """
+
+    if hasattr(message, "user_is_banned") and message.user_is_banned:
+        return await PyroHelper.option_message(
+            client=client,
+            message=message,
+            option_key=options.settings.BANNED_USER_MESSAGE,
+        )
+
+    channels_n_invite = config.channels_n_invite
+    buttons = []
+
+    for channel, channel_info in channels_n_invite.items():
+        buttons.append([InlineKeyboardButton(text=channel, url=channel_info["invite_link"])])
+
+    start_arg = message.command[1] if len(message.command) > 1 else ""
+    
+    if start_arg:
+        link = f"https://t.me/{client.me.username}?start={start_arg}"
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم - دریافت فایل", url=link)])
+    else:
+        buttons.append([InlineKeyboardButton(text="✅ عضو شدم", callback_data="check_sub")])
+
+    return await PyroHelper.option_message(
+        client=client,
+        message=message,
+        option_key=options.settings.FORCE_SUB_MESSAGE,
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
