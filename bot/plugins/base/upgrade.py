@@ -3,9 +3,8 @@
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-@Client.on_message(filters.private & filters.command("upgrade"))
-async def upgrade_handler(client: Client, message):
-    text = """**⭕️ پلن رایگان 🎁 | مشخصات پلن رایگان 🎉
+# متن دقیقاً همون چیزی که خودت نوشتی (حتی یک نقطه هم تغییر نکرده)
+UPGRADE_TEXT = """**⭕️ پلن رایگان 🎁 | مشخصات پلن رایگان 🎉
  ✓ نامحدود رایگان
  ✓ میزان استفاده روزانه : 2 لینک + 2شانس
  ✓ فاصله زمانی بین فایل ها 30ثانیه میباشد.
@@ -31,8 +30,29 @@ async def upgrade_handler(client: Client, message):
 🔖 20 تا کلیک برای دریافت-فایل == 100,000ت
 ✓ فاصله زمانی بین فایل ها ندارد.**"""
 
+# دستور /upgrade
+@Client.on_message(filters.private & filters.command("upgrade"))
+async def upgrade_command(client: Client, message):
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("ارتقا پلن و خرید", url="https://t.me/dgg")]
+        [InlineKeyboardButton("ارتقا پلن و خرید", callback_data="upgrade")]
     ])
 
-    await message.reply(text, reply_markup=keyboard, disable_web_page_preview=True)
+    await message.reply(
+        UPGRADE_TEXT,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
+
+
+# وقتی روی دکمه کلیک شد
+@Client.on_callback_query(filters.regex("^upgrade$"))
+async def upgrade_callback(bot, update):
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("ارتقای پلن", url="https://t.me/ir_botz_support_bot")]
+    ])
+
+    await update.message.edit_text(
+        text=UPGRADE_TEXT,
+        reply_markup=keyboard,
+        disable_web_page_preview=True
+    )
